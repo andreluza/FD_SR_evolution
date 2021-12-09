@@ -1,0 +1,7 @@
+Increases of species richness across communities tend to expand the trait space (or FRic), as the accumulation of species adds traits in the edges of the trait space.
+
+In other words, species will pack into specific portions of the trait space, likely within a combination of traits that confer high specialization to resource acquisition and partitioning (Mouillot et al. 2014, Pigot et al. 2016).
+
+
+test of hypotheses on niche specialization without a formal consideration of how niches evolve.
+We fill this gap by ...
