@@ -1,3 +1,5 @@
+#test <- read.csv("https://raw.githubusercontent.com/andreluza/FD_SR_evolution/main/data/Atributos_especies_Atlantico_%26_Pacifico_Oriental_2020_04_28.csv",
+#                 sep=";")
 
 # -------------------------------------------------------
 # Evolution of FEve-SR and FRic - SR relationships
@@ -157,9 +159,10 @@ traits<- read.csv (here("data2", "Penone_et_al_2016_mammal_trait_data_imputed.cs
 # standradize traits
 std_traits <- data.frame (Body.mass.g = scale(traits$Body.mass.g),
                           LitSz = scale(traits$LitSz),
-                          LitPerYear = scale(traits$LitPerYear),
-                          MaxLifepsan = scale(traits$MaxLifepsan.m),
-                          PopDen.n.km2 = scale(traits$PopDen.n.km2))
+                          #LitPerYear = scale(traits$LitPerYear),
+                          MaxLifepsan = scale(traits$MaxLifepsan.m)#,
+                          #PopDen.n.km2 = scale(traits$PopDen.n.km2)
+                          )
 rownames(std_traits)<- traits$IUCN.binomial                          
 
 # rm spp not in trait dataset
@@ -212,8 +215,10 @@ std_traits_subset <- std_traits[which(rownames(std_traits) %in% match_comm_data[
 std_traits_subset<- std_traits_subset[order(rownames(std_traits_subset)),]
 
 # run
-empirical_FD <- dbFD(x=std_traits_subset,
-       a=match_comm_data[[1]]$comm,
+empirical_FD <- lapply(match_comm_data, function (i) 
+  
+  dbFD(x=std_traits_subset,
+       a=i$comm,
        w.abun=T,
        stand.x=F,
        calc.FRic = T,
@@ -222,38 +227,43 @@ empirical_FD <- dbFD(x=std_traits_subset,
        calc.CWM = F,
        calc.FDiv=F,
        print.pco = T)
-
+  )
+# save
+save (empirical_FD,
+      file= here("output", "empirical_FD_rodents.RData"))
 
 ## Simulate trait evolution according to a bivariate "BMM" model
 # Number of traits
 ntraits<-ncol(std_traits_subset)
 # Number of simulated (pairs of) traits
-nsim<-10
-# sigmas
-sigma<-(rbind(c(1,0.1,0.1,0.1,0.1),
-              c(0.1,1,0.1,0.1,0.1),
-              c(0.1,0.1,1,0.1,0.1),
-              c(0.1,0.1,0.1,1,0.1),
-              c(0.1,0.1,0.1,0.1,1)))
+nsim<-50
+
+# simulate parameters
+simul_param_BM <- lapply (match_comm_data, function (i) 
+  
+  mvgls(scale(std_traits_subset)~1, 
+        tree=i$phy,  
+        model="BM", penalty="RidgeArch",
+        REML=T,
+        method = "Mahalanobis")
+            )
 
 # ancestral states for each traits
 theta<-rep(0,ntraits)
 
 # Simulate
 
-simul<-lapply (tree_list, function (i) 
+simul<-lapply (seq(1,length(tree_list)), function (i) 
   
-        mvSIM(i,
+        mvSIM(tree_list[[i]],
              nsim=nsim, 
              model="BM1",
-             param=list(sigma=sigma, 
+             param=list(sigma=simul_param_BM[[i]]$sigma$S, 
                         theta=theta,
                         ntraits=ntraits,
                         names_traits=c("Trait 1",
                                        "Trait 2",
-                                       "Trait 3",
-                                       "Trait 4",
-                                       "Trait 5"))))
+                                       "Trait 3"))))
 
 
 # reduce (per phylogeny) to have the average of multivariate traits
@@ -278,41 +288,59 @@ simulated_FD <- lapply (seq (1,length (match_comm_data)), function (i)
                      print.pco = T)
   
 )
+# save
+save (simul_param_BM,
+      simulated_FD,
+      file= here("output", "simulated_FD_BM_rodents.RData"))
 
 # ----------------------------------------------
 # niche filling (early burst)
 
 # sigmas
-betas<-(rbind(c(-0.5,0.1,0.1,0.1,0.1),
-              c(0.1,-0.5,0.1,0.1,0.1),
-              c(0.1,0.1,-0.5,0.1,0.1),
-              c(0.1,0.1,0.-0.5,1,0.1),
-              c(0.1,0.1,0.1,0.1,-0.5)))
+# simulate parameters
+simul_param_EB <- lapply (match_comm_data, function (i) 
+  
+  mvgls(scale(std_traits_subset) ~ 1,  
+        tree=i$phy, 
+        model = "EB", 
+        penalty="RidgeArch",
+        method = "Mahalanobis",
+        REML=T))
 
 # Simulate Eb
+# paralllel
+nc <- 5
+cl <- makeCluster(nc) ## number of cores
 
-simul_EB<-lapply (tree_list, function (i) 
+# export packages
+clusterEvalQ(cl, library(mvMORPH))
+
+# export your data and function
+clusterExport(cl, c("simul_param_EB", 
+                    "theta",
+                    "ntraits",
+                    "tree_list",
+                    'nsim'))
+
+simul_EB<-parLapply (cl, seq(1,length(tree_list)), function (i) 
   
-  mvSIM(i,
+  mvSIM(tree_list[[i]],
         nsim=nsim, 
         model="EB",
-        param=list(sigma=sigma, 
-                   beta=betas,
+        param=list(sigma=simul_param_EB[[i]]$sigma$S, 
+                   beta=simul_param_EB[[i]]$coefficients,
                    theta=theta,
                    ntraits=ntraits,
                    names_traits=c("Trait 1",
                                   "Trait 2",
-                                  "Trait 3",
-                                  "Trait 4",
-                                  "Trait 5"))))
+                                  "Trait 3"))))
 
+stopCluster(cl)
 
 # reduce (per phylogeny) to have the average of multivariate traits
 mean_simul_EB <- lapply (simul_EB, function (i)
   
   Reduce("+",i)/length(i))
-
-
 
 # simulated FD
 # run across simulations
@@ -330,38 +358,74 @@ simulated_FD_EB <- lapply (seq (1,length (match_comm_data)), function (i)
        print.pco = T)
   
 )
+save (simul_param_EB,
+      simulated_FD_EB,
+      file= here("output", "simulated_FD_EB_rodents.RData"))
 
 # OU
-# Simulate Eb
-alpha <- (rbind(c(1,0.1,0.1,0.1,0.1),
-                c(0.1,1,0.1,0.1,0.1),
-                c(0.1,0.1,1,0.1,0.1),
-                c(0.1,0.1,0.1,1,0.1),
-                c(0.1,0.1,0.1,0.1,1)))
-
-simul_OU<-lapply (tree_list, function (i) 
+# simulate parameters
+simul_param_OU <- lapply (match_comm_data, function (i) 
   
-  mvSIM(i,
-        nsim=nsim, 
-        model="OU1",
-        param=list(sigma=sigma, 
-                   beta=betas,
-                   theta=theta,
-                   alpha=alpha,
-                   ntraits=ntraits,
-                   names_traits=c("Trait 1",
-                                  "Trait 2",
-                                  "Trait 3",
-                                  "Trait 4",
-                                  "Trait 5"))))
+  mvgls(scale(std_traits_subset) ~ 1,  
+        tree=i$phy, 
+        model = "OU", 
+        penalty="RidgeArch",
+        method = "Mahalanobis",
+        REML=T))
 
+
+# Simulate OU
+alpha <- (rbind(c(1,0.5,0.5),
+                c(0.5,1,0.5),
+                c(0.5,0.5,1)))
+
+
+alpha <- lapply (simul_param_OU, function (i) {
+  
+  # coefficients (alpha) in the diagonal
+  diag(alpha) <- i$coefficients;
+  alpha
+  
+})
+
+# paralllel
+nc <- 3
+cl <- makeCluster(nc) ## number of cores
+
+# export packages
+clusterEvalQ(cl, library(mvMORPH))
+
+# export your data and function
+clusterExport(cl, c("simul_param_OU", 
+                    "theta",
+                    "ntraits",
+                    "tree_list",
+                    'nsim',
+                    "alpha"))
+
+
+simul_OU<-parLapply (cl, seq(1,length(tree_list)), function (i) 
+  
+  tryCatch(
+    mvSIM(tree_list[[i]],
+          nsim=nsim, 
+          model="OU1",
+          param=list(sigma=simul_param_OU[[i]]$sigma$S, 
+                     alpha = alpha[[i]],
+                     theta=theta,
+                     ntraits=ntraits,
+                     names_traits=c("Trait 1",
+                                    "Trait 2",
+                                    "Trait 3"))),
+    error = function(e) return ("NULL"))
+)
+
+stopCluster (cl)
 
 # reduce (per phylogeny) to have the average of multivariate traits
 mean_simul_OU <- lapply (simul_OU, function (i)
   
   Reduce("+",i)/length(i))
-
-
 
 # simulated FD
 # run across simulations
@@ -380,13 +444,15 @@ simulated_FD_OU <- lapply (seq (1,length (match_comm_data)), function (i)
   
 )
 
-save.image("image_rodents.RData")
+save (simul_param_OU,
+      simulated_FD_OU,
+      file= here("output", "simulated_FD_OU_rodents.RData"))
 
 # -----------------------------------------------------
 # empirical results
-empirical_results <- data.frame (SR= empirical_FD$nbsp,
-                                 FRic= empirical_FD$FRic,
-                                 FEve=empirical_FD$FEve,
+empirical_results <- data.frame (SR= apply(sapply(empirical_FD,"[[","nbsp"),1,mean),
+                                 FRic= apply(sapply(empirical_FD,"[[","FRic"),1,mean),
+                                 FEve=apply(sapply(empirical_FD,"[[","FEve"),1,mean),
                                  Dataset= "Empirical")
 
 # average of simulated values (brownian motion)
@@ -512,9 +578,7 @@ m.lst.FEve <- emtrends (model.ancova.FEve, "Dataset", var="SR")
 # save results
 save (model.ancova.FRic,
 	m.lst.FRic,
-	m.lst_tab.FRic,
 	model.ancova.FEve,
 	m.lst.FEve,
-	m.lst_tab.FEve,
-      file=here("Output", "GLM_test_SM.RData"))
+      file=here("Output", "GLM_test_rodents.RData"))
 
