@@ -3,7 +3,6 @@
 require(openxlsx)
 require(here)
 require(reshape)
-
 # phylogeny
 
 library(phytools)
@@ -12,6 +11,7 @@ require(picante)
 
 # trait simulation
 require(mvMORPH)
+require(parallel)
 
 # functional diversity
 require (FD)
