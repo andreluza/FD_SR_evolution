@@ -159,11 +159,16 @@ traits<- read.csv (here("data2", "Penone_et_al_2016_mammal_trait_data_imputed.cs
 # standradize traits
 std_traits <- data.frame (Body.mass.g = scale(traits$Body.mass.g),
                           LitSz = scale(traits$LitSz),
-                          #LitPerYear = scale(traits$LitPerYear),
-                          MaxLifepsan = scale(traits$MaxLifepsan.m)#,
-                          #PopDen.n.km2 = scale(traits$PopDen.n.km2)
+                          LitPerYear = scale(traits$LitPerYear),
+                          MaxLifepsan = scale(traits$MaxLifepsan.m),
+                          PopDen.n.km2 = scale(traits$PopDen.n.km2)
                           )
 rownames(std_traits)<- traits$IUCN.binomial                          
+# imputation without phylogeny
+require(missForest)
+std_traits <- missForest (std_traits, maxiter = 50,
+                          ntree= 100,variablewise = T)
+std_traits<-std_traits$ximp
 
 # rm spp not in trait dataset
 combined_data <- combined_data[,which(colnames(combined_data) %in%
@@ -214,6 +219,27 @@ std_traits_subset <- std_traits[which(rownames(std_traits) %in% match_comm_data[
 # ordering 
 std_traits_subset<- std_traits_subset[order(rownames(std_traits_subset)),]
 
+# phylogenetic signal
+psignal <- lapply (seq(1,ncol (std_traits_subset)), function (i)
+  
+    phylosig(match_comm_data$UNTITLED$phy, 
+         std_traits_subset[,i], 
+         method="K", test=TRUE, nsim=999)
+)
+
+# df with res
+psignal <- do.call (rbind, 
+         
+         lapply (psignal, function (i)
+
+            data.frame (K=i$K,
+              pval=i$P)
+  )
+)
+
+# rownames(std_traits_subset) == match_comm_data$UNTITLED$phy$tip.label
+save.image(here ( "Output","image_rodents.RData"))
+
 # run
 empirical_FD <- lapply(match_comm_data, function (i) 
   
@@ -223,11 +249,13 @@ empirical_FD <- lapply(match_comm_data, function (i)
        stand.x=F,
        calc.FRic = T,
        stand.FRic = T,
+       m = "max",
        corr = "lingoes",
        calc.CWM = F,
        calc.FDiv=F,
        print.pco = T)
   )
+
 # save
 save (empirical_FD,
       file= here("output", "empirical_FD_rodents.RData"))
@@ -237,16 +265,15 @@ save (empirical_FD,
 ntraits<-ncol(std_traits_subset)
 # Number of simulated (pairs of) traits
 nsim<-50
-
+nc<-3
 # simulate parameters
 simul_param_BM <- lapply (match_comm_data, function (i) 
   
-  mvgls(scale(std_traits_subset)~1, 
-        tree=i$phy,  
-        model="BM", penalty="RidgeArch",
-        REML=T,
-        method = "Mahalanobis")
-            )
+  fitContinuous(phy=i$phy,  
+                dat = scale(std_traits_subset), 
+                model="BM", 
+                ncores = nc)
+)
 
 # ancestral states for each traits
 theta<-rep(0,ntraits)
@@ -258,12 +285,18 @@ simul<-lapply (seq(1,length(tree_list)), function (i)
         mvSIM(tree_list[[i]],
              nsim=nsim, 
              model="BM1",
-             param=list(sigma=simul_param_BM[[i]]$sigma$S, 
+             param=list(sigma=diag (c(simul_param_BM[[i]]$Body.mass.g$opt$sigsq,
+                                      simul_param_BM[[i]]$LitSz$opt$sigsq,
+                                      simul_param_BM[[i]]$LitPerYear$opt$sigsq,
+                                      simul_param_BM[[i]]$MaxLifepsan$opt$sigsq,
+                                      simul_param_BM[[i]]$PopDen.n.km2$opt$sigsq)),
                         theta=theta,
                         ntraits=ntraits,
                         names_traits=c("Trait 1",
                                        "Trait 2",
-                                       "Trait 3"))))
+                                       "Trait 3",
+                                       "Trait 4",
+                                       "Trait 5"))))
 
 
 # reduce (per phylogeny) to have the average of multivariate traits
@@ -282,12 +315,14 @@ simulated_FD <- lapply (seq (1,length (match_comm_data)), function (i)
                      stand.x=F,
                      calc.FRic = T,
                      stand.FRic = T,
+                     m = "max",
                      corr = "lingoes",
                      calc.CWM = F,
                      calc.FDiv=F,
                      print.pco = T)
   
 )
+
 # save
 save (simul_param_BM,
       simulated_FD,
@@ -300,16 +335,16 @@ save (simul_param_BM,
 # simulate parameters
 simul_param_EB <- lapply (match_comm_data, function (i) 
   
-  mvgls(scale(std_traits_subset) ~ 1,  
-        tree=i$phy, 
-        model = "EB", 
-        penalty="RidgeArch",
-        method = "Mahalanobis",
-        REML=T))
+  fitContinuous(phy=i$phy,  
+                dat = scale(std_traits_subset), 
+                model="EB", 
+                SE=NA,
+                ncores = nc)
+  
+  )
 
 # Simulate Eb
-# paralllel
-nc <- 5
+# parallel
 cl <- makeCluster(nc) ## number of cores
 
 # export packages
@@ -327,13 +362,23 @@ simul_EB<-parLapply (cl, seq(1,length(tree_list)), function (i)
   mvSIM(tree_list[[i]],
         nsim=nsim, 
         model="EB",
-        param=list(sigma=simul_param_EB[[i]]$sigma$S, 
-                   beta=simul_param_EB[[i]]$coefficients,
+        param=list(sigma=diag (c(simul_param_EB[[i]]$Body.mass.g$opt$sigsq,
+                                 simul_param_EB[[i]]$LitSz$opt$sigsq,
+                                 simul_param_EB[[i]]$LitPerYear$opt$sigsq,
+                                 simul_param_EB[[i]]$MaxLifepsan$opt$sigsq,
+                                 simul_param_EB[[i]]$PopDen.n.km2$opt$sigsq)), 
+                   beta=diag (c(simul_param_EB[[i]]$Body.mass.g$opt$a,
+                                simul_param_EB[[i]]$LitSz$opt$a,
+                                simul_param_EB[[i]]$LitPerYear$opt$a,
+                                simul_param_EB[[i]]$MaxLifepsan$opt$a,
+                                simul_param_EB[[i]]$PopDen.n.km2$opt$a)),
                    theta=theta,
                    ntraits=ntraits,
                    names_traits=c("Trait 1",
                                   "Trait 2",
-                                  "Trait 3"))))
+                                  "Trait 3",
+                                  "Trait 4",
+                                  "Trait 5"))))
 
 stopCluster(cl)
 
@@ -352,12 +397,14 @@ simulated_FD_EB <- lapply (seq (1,length (match_comm_data)), function (i)
        stand.x=F,
        calc.FRic = T,
        stand.FRic = T,
+       m = "max",
        corr = "lingoes",
        calc.CWM = F,
        calc.FDiv=F,
        print.pco = T)
   
 )
+# save
 save (simul_param_EB,
       simulated_FD_EB,
       file= here("output", "simulated_FD_EB_rodents.RData"))
@@ -366,30 +413,15 @@ save (simul_param_EB,
 # simulate parameters
 simul_param_OU <- lapply (match_comm_data, function (i) 
   
-  mvgls(scale(std_traits_subset) ~ 1,  
-        tree=i$phy, 
-        model = "OU", 
-        penalty="RidgeArch",
-        method = "Mahalanobis",
-        REML=T))
+  fitContinuous(phy=i$phy,  
+                dat = scale(std_traits_subset), 
+                model="OU", 
+                SE=NA,
+                ncores = nc)
+  )
 
 
-# Simulate OU
-alpha <- (rbind(c(1,0.5,0.5),
-                c(0.5,1,0.5),
-                c(0.5,0.5,1)))
-
-
-alpha <- lapply (simul_param_OU, function (i) {
-  
-  # coefficients (alpha) in the diagonal
-  diag(alpha) <- i$coefficients;
-  alpha
-  
-})
-
-# paralllel
-nc <- 3
+# parallel
 cl <- makeCluster(nc) ## number of cores
 
 # export packages
@@ -410,13 +442,23 @@ simul_OU<-parLapply (cl, seq(1,length(tree_list)), function (i)
     mvSIM(tree_list[[i]],
           nsim=nsim, 
           model="OU1",
-          param=list(sigma=simul_param_OU[[i]]$sigma$S, 
-                     alpha = alpha[[i]],
+          param=list(sigma=diag (c(simul_param_OU[[i]]$Body.mass.g$opt$sigsq,
+                                   simul_param_OU[[i]]$LitSz$opt$sigsq,
+                                   simul_param_OU[[i]]$LitPerYear$opt$sigsq,
+                                   simul_param_OU[[i]]$MaxLifepsan$opt$sigsq,
+                                   simul_param_OU[[i]]$PopDen.n.km2$opt$sigsq)), 
+                     alpha = diag (c(simul_param_OU[[i]]$Body.mass.g$opt$alpha,
+                                     simul_param_OU[[i]]$LitSz$opt$alpha,
+                                     simul_param_OU[[i]]$LitPerYear$opt$alpha,
+                                     simul_param_OU[[i]]$MaxLifepsan$opt$alpha,
+                                     simul_param_OU[[i]]$PopDen.n.km2$opt$alpha)),
                      theta=theta,
                      ntraits=ntraits,
                      names_traits=c("Trait 1",
                                     "Trait 2",
-                                    "Trait 3"))),
+                                    "Trait 3",
+                                    "Trait 4",
+                                    "Trait 5"))),
     error = function(e) return ("NULL"))
 )
 
@@ -436,6 +478,7 @@ simulated_FD_OU <- lapply (seq (1,length (match_comm_data)), function (i)
        w.abun=T,
        stand.x=F,
        calc.FRic = T,
+       m = "max",
        stand.FRic = T,
        corr = "lingoes",
        calc.CWM = F,
@@ -443,142 +486,8 @@ simulated_FD_OU <- lapply (seq (1,length (match_comm_data)), function (i)
        print.pco = T)
   
 )
-
+# save
 save (simul_param_OU,
       simulated_FD_OU,
       file= here("output", "simulated_FD_OU_rodents.RData"))
-
-# -----------------------------------------------------
-# empirical results
-empirical_results <- data.frame (SR= apply(sapply(empirical_FD,"[[","nbsp"),1,mean),
-                                 FRic= apply(sapply(empirical_FD,"[[","FRic"),1,mean),
-                                 FEve=apply(sapply(empirical_FD,"[[","FEve"),1,mean),
-                                 Dataset= "Empirical")
-
-# average of simulated values (brownian motion)
-simulated_results_BM <- data.frame (SR= apply(sapply(simulated_FD,"[[","nbsp"),1,mean),
-                                 FRic= apply(sapply(simulated_FD,"[[","FRic"),1,mean),
-                                 FEve=apply(sapply(simulated_FD,"[[","FEve"),1,mean),
-                                 Dataset= "SimulatedBM")
-
-# average of simulated values by EB
-simulated_results_EB <- data.frame (SR= apply(sapply(simulated_FD_EB,"[[","nbsp"),1,mean),
-                                    FRic= apply(sapply(simulated_FD_EB,"[[","FRic"),1,mean),
-                                    FEve=apply(sapply(simulated_FD_EB,"[[","FEve"),1,mean),
-                                    Dataset = "SimulatedEB")
-# average of simulated values by OU
-simulated_results_OU <- data.frame (SR= apply(sapply(simulated_FD_OU,"[[","nbsp"),1,mean),
-                                    FRic= apply(sapply(simulated_FD_OU,"[[","FRic"),1,mean),
-                                    FEve=apply(sapply(simulated_FD_OU,"[[","FEve"),1,mean),
-                                    Dataset = "SimulatedOU")
-
-# bind them
-df_analyzes <- rbind(empirical_results,
-                     simulated_results_BM,
-                     simulated_results_EB,
-                     simulated_results_OU)
-
-##---------------------------------------------------------
-# analyses
-# MCMC settings
-nc<-3
-ni<-10000
-nb<-5000
-nt<-10
-
-# run model (ancova)
-model.ancova.FRic <- brm (FRic ~ poly(SR,2)*Dataset,
-                     data=df_analyzes,
-                     family = gaussian (link="identity"),
-                     chains=nc,
-                     iter = ni,
-                     warmup = nb,
-                     thin=nt)
-
-# summary of results
-summary (model.ancova.FRic)
-tab_model(model.ancova.FRic)
-
-# plotting
-p1<-plot(conditional_effects(model.ancova.FRic,
-                             method="fitted",
-                             re_formula=NA,
-                             robust=T,
-                             effects = "SR:Dataset",
-                             points=T,
-                             prob = 0.95),
-         
-         theme = theme_classic() +
-
-	 theme (axis.title = element_text(size=15),
-                  axis.text = element_text(size=12),
-                  legend.position = "top") ,
-         points=T) [[1]] + 
-  
-  
-  scale_color_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
-  scale_fill_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
-
-
-  xlab("Species richness gradient") + 
-  
-  ylab ("Functional Richness (FRic)")
-
-
-# compare slopes
-
-m.lst.FRic <- emtrends (model.ancova.FRic, "Dataset", var="SR")
-# m.lst_tab.FRic <- summary(m.lst.FRic,point.est = mean)
-
-# run model (ancova)
-model.ancova.FEve <- brm (FEve ~ poly(SR,2)*Dataset,
-                          data=df_analyzes,
-                          family = gaussian (link="identity"),
-                          chains=nc,
-                          iter = ni,
-                          warmup = nb,
-                          thin=nt)
-
-# summary of results
-summary (model.ancova.FEve)
-tab_model(model.ancova.FEve)
-
-# plotting
-p2<-plot(conditional_effects(model.ancova.FEve,
-                             method="fitted",
-                             re_formula=NA,
-                             robust=T,
-                             effects = "SR:Dataset",
-                             points=T,
-                             prob = 0.95),
-         
-         theme = theme_classic() +
-           
-           theme (axis.title = element_text(size=15),
-                  axis.text = element_text(size=12),
-                  legend.position = "top") ,
-         points=T) [[1]] + 
-  
-  scale_color_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
-  scale_fill_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
-
-  xlab("Species richness gradient") + 
-  
-  ylab ("Functional Evenness (FEve)")
-
-# organize plots
-pdf(here("Output","Fig3_SM.pdf"), width=9,height=5)
-grid.arrange(p1,p2,nrow=1)
-dev.off()
-
-# compare slopes
-m.lst.FEve <- emtrends (model.ancova.FEve, "Dataset", var="SR")
-# m.lst_tab.FEve <- summary(m.lst.FEve,point.est = mean)
-
-# save results
-save (model.ancova.FRic,
-	m.lst.FRic,
-	model.ancova.FEve,
-	m.lst.FEve,
-      file=here("Output", "GLM_test_rodents.RData"))
-
+# end
