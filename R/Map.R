@@ -5,7 +5,8 @@ source("R/packages.R")
 source("R/functions.R")
 
 # load fish data
-load("image_fish.RData")
+load(here ("Output","image_fish.RData"))
+load(here ("Output","empirical_FD_fish.RData"))
 
 # coordinates
 coords_fish <- data.frame (Lon = aggregate(peixes$Lon, by =list(data=peixes$eventID_MOD), FUN=mean),
@@ -18,7 +19,7 @@ axes_fish <- empirical_FD[[1]]$x.axes
 comm_fish <- match_comm_data[[1]]$comm
 
 # closest to four coords
-seq_search <- c(-1,-15,-20,-27)
+seq_search <- c(-5,-10,-17,-24)
 closest_fish <- lapply (as.list(seq_search), function (i) 
   closest (coords_fish$Lat,i))
 
@@ -27,6 +28,8 @@ sel_comms_fish <- lapply (closest_fish, function (i)
   which(coords_fish$Lat == i[1])[1])
 # which ones
 # sites [unlist(sel_comms_fish)]
+
+range_plot_fish <- range(comm_fish [unlist(sel_comms_fish),])
 
 # find spp in each community and built the plot 
 
@@ -64,8 +67,8 @@ fish_space <- lapply (sel_comms_fish, function (i) {
           geom_point(data=pk,aes (A1,A2,size=(abund)),
                      alpha=0.5,col="cyan") + 
           scale_size(name="CPUE",
-                     limits=c(0,10),
-                     breaks=seq(0,10,2.5))+ 
+                     limits=c(range_plot_fish[1],range_plot_fish[2]),
+                     breaks=seq(range_plot_fish[1],range_plot_fish[2],10))+ 
           theme(axis.text = element_text(size=6),
                 axis.title=element_text(size=8))
         ; # return
@@ -73,7 +76,8 @@ fish_space <- lapply (sel_comms_fish, function (i) {
 
 })
 
-array_fish <- grid.arrange(fish_space[[1]]+theme(legend.position="top",
+array_fish <- grid.arrange(fish_space[[1]]+theme(legend.position=c(0.7,0.9),
+                                                 legend.direction = "horizontal",
                                                  axis.title.x = element_blank(),
                                                  axis.text.x = element_blank()),
                             fish_space[[2]]+theme(legend.position="none",
@@ -82,15 +86,17 @@ array_fish <- grid.arrange(fish_space[[1]]+theme(legend.position="top",
                             fish_space[[3]]+theme(legend.position="none",
                                                   axis.title.x = element_blank(),
                                                   axis.text.x = element_blank()),
-                            fish_space[[4]]+theme(legend.position="none"),
+                            fish_space[[4]]+theme(legend.position="none",
+                                                  axis.title.x = element_blank()),
                            ncol=1)
 
 # --------------------------------------------
 ## rodents
-load("image_rodents.RData")
+load(here ("Output","image_rodents.RData"))
+load(here ("Output", "empirical_FD_rodents.RData"))
 
 # axes
-axes_rodents <- empirical_FD$x.axes
+axes_rodents <- empirical_FD[[1]]$x.axes
 
 # community
 comm_rodents <- match_comm_data[[1]]$comm
@@ -104,6 +110,7 @@ sel_comms_rodents <- lapply (closest_rodents, function (i)
   which(spatial_effort_data_LF$Latitude == i[1])[1])
 # which ones
 # sites [unlist(sel_comms_rodents)]
+range_plot_rodents <- range(comm_rodents [unlist(sel_comms_rodents),])
 
 # find spp in each community and built the plot 
 
@@ -135,15 +142,15 @@ rodents_space <- lapply (sel_comms_rodents, function (i) {
                  fill="black",size=3) +
     xlim(min (a$A1)-0.2,max (a$A1)+0.2) + 
     annotate("text",x=2.5,y=2,size=2.5,
-             label=paste ("SR=", empirical_FD$nbsp[i],
-                          "\nFRic=", round(empirical_FD$FRic[i],2),
-                          "\nFEve=", round(empirical_FD$FEve[i],2))
+             label=paste ("SR=", empirical_FD$UNTITLED$nbsp[i],
+                          "\nFRic=", round(empirical_FD$UNTITLED$FRic[i],2),
+                          "\nFEve=", round(empirical_FD$UNTITLED$FEve[i],2))
     ) + 
     geom_point(data=pk,aes (A1,A2,size=(abund)),
                alpha=0.5,col="yellow") + 
     scale_size(name="CPUE",
-               limits=c(0,0.3),
-               breaks=seq(0,0.3,0.07)) + 
+               limits=c(range_plot_rodents[1],range_plot_rodents[2]),
+               breaks=seq(range_plot_rodents[1],range_plot_rodents[2],0.005)) + 
     theme(axis.text = element_text(size=6),
           axis.title=element_text(size=8))
   ; # return
@@ -151,16 +158,18 @@ rodents_space <- lapply (sel_comms_rodents, function (i) {
   
 })
 
-array_rodents <- grid.arrange(rodents_space[[1]]+theme(legend.position="top",
+array_rodents <- grid.arrange(rodents_space[[1]]+theme(legend.position="none",
                                                     axis.title.x = element_blank(),
                                                     axis.text.x = element_blank()),
                               rodents_space[[2]]+theme(legend.position="none",
                                                     axis.title.x = element_blank(),
                                                     axis.text.x = element_blank()),
-                              rodents_space[[3]]+theme(legend.position="none",
+                              rodents_space[[3]]+theme(legend.position=c(0.5,0.1),
+                                                       legend.direction = "horizontal",
                                                     axis.title.x = element_blank(),
                                                     axis.text.x = element_blank()),
-                              rodents_space[[4]]+theme(legend.position="none"),
+                              rodents_space[[4]]+theme(legend.position="none",
+                                                       axis.title.x = element_blank()),
                               ncol=1)
 
 
@@ -203,7 +212,7 @@ map_fish_rodents <- map_rodents +
              col="#0e49b5")
 
 # arrange all
-pdf(file=here("output","Fig2.pdf"),height=7,width=10)
+pdf(file=here("Output","Fig2.pdf"),height=7,width=10)
 
 grid.arrange(array_rodents,
              map_fish_rodents, 
