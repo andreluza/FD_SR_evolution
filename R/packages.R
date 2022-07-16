@@ -42,3 +42,7 @@ require(ggrepel)
 require (scatterpie)
 require(sf)
 require(rgeos)
+
+
+# taxonomic validation
+require(worrms)
