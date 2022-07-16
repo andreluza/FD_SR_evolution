@@ -164,6 +164,9 @@ std_traits <- data.frame (Body.mass.g = scale(traits$Body.mass.g),
                           PopDen.n.km2 = scale(traits$PopDen.n.km2)
                           )
 rownames(std_traits)<- traits$IUCN.binomial                          
+# percentage of missing entries
+table(is.na(std_traits))[2]/sum(table(is.na(std_traits)))
+
 # imputation without phylogeny
 require(missForest)
 std_traits <- missForest (std_traits, maxiter = 50,
@@ -220,25 +223,35 @@ std_traits_subset <- std_traits[which(rownames(std_traits) %in% match_comm_data[
 std_traits_subset<- std_traits_subset[order(rownames(std_traits_subset)),]
 
 # phylogenetic signal
-psignal <- lapply (seq(1,ncol (std_traits_subset)), function (i)
+
+psignal <- lapply (seq(1,length(match_data)), function (k)
   
-    phylosig(match_comm_data$UNTITLED$phy, 
-         std_traits_subset[,i], 
-         method="K", test=TRUE, nsim=999)
-)
+  lapply (seq(1,ncol (match_data[[k]]$data)), function (i)
+    
+    phylosig(match_data[[k]]$phy, 
+             match_data[[k]]$data[,i], 
+             method="K", test=TRUE, nsim=999)
+  ))
 
 # df with res
-psignal <- do.call (rbind, 
-         
-         lapply (psignal, function (i)
+psignal <- lapply (psignal, function (k) do.call (rbind, 
+                                                  
+                                                  lapply (k, function (i)
+                                                    
+                                                    data.frame (K=i$K,
+                                                                pval=i$P)
+                                                  )
+))
 
-            data.frame (K=i$K,
-              pval=i$P)
-  )
-)
+# signal K
+apply(sapply (psignal, "[[", "K"),1,mean)
+apply(sapply (psignal, "[[", "K"),1,sd)
 
 # rownames(std_traits_subset) == match_comm_data$UNTITLED$phy$tip.label
 save.image(here ( "Output","image_rodents.RData"))
+
+# -----------------------------------------
+# calculate indices
 
 # run
 empirical_FD <- lapply(match_comm_data, function (i) 
@@ -260,18 +273,21 @@ empirical_FD <- lapply(match_comm_data, function (i)
 save (empirical_FD,
       file= here("output", "empirical_FD_rodents.RData"))
 
+# -------------------------------------------------------------------
 ## Simulate trait evolution according to a bivariate "BMM" model
 # Number of traits
 ntraits<-ncol(std_traits_subset)
 # Number of simulated (pairs of) traits
 nsim<-50
-nc<-3
+nc<-5
 # simulate parameters
-simul_param_BM <- lapply (match_comm_data, function (i) 
+simul_param_BM <- lapply (match_data, function (i) 
+  
   
   fitContinuous(phy=i$phy,  
-                dat = scale(std_traits_subset), 
+                dat = (i$data), 
                 model="BM", 
+                #SE=NA,
                 ncores = nc)
 )
 
@@ -333,12 +349,13 @@ save (simul_param_BM,
 
 # sigmas
 # simulate parameters
-simul_param_EB <- lapply (match_comm_data, function (i) 
+simul_param_EB <- lapply (match_data, function (i) 
+  
   
   fitContinuous(phy=i$phy,  
-                dat = scale(std_traits_subset), 
+                dat = (i$data), 
                 model="EB", 
-                SE=NA,
+               # SE=NA,
                 ncores = nc)
   
   )
@@ -409,14 +426,16 @@ save (simul_param_EB,
       simulated_FD_EB,
       file= here("output", "simulated_FD_EB_rodents.RData"))
 
+#---------------------------------------------------------------
 # OU
 # simulate parameters
-simul_param_OU <- lapply (match_comm_data, function (i) 
+simul_param_OU <- lapply (match_data, function (i) 
+  
   
   fitContinuous(phy=i$phy,  
-                dat = scale(std_traits_subset), 
+                dat = (i$data),
                 model="OU", 
-                SE=NA,
+               # SE=NA,
                 ncores = nc)
   )
 
@@ -432,8 +451,7 @@ clusterExport(cl, c("simul_param_OU",
                     "theta",
                     "ntraits",
                     "tree_list",
-                    'nsim',
-                    "alpha"))
+                    'nsim'))
 
 
 simul_OU<-parLapply (cl, seq(1,length(tree_list)), function (i) 

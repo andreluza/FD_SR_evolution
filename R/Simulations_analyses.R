@@ -13,14 +13,122 @@ source("R/packages.R")
 #fishtree_complete_phylogeny()
 tree<- read.tree (here ("data","TACT","Reef_fish_all_combined.trees"))#fishtree_complete_phylogeny()
 
+# dataframe with taxa name
+df_taxa <-data.frame (sp = (unique(tree[[1]]$tip.label[order(tree[[1]]$tip.label)])))
+df_taxa$sp <- gsub ("_", " ", df_taxa$sp)
+
+# worms's validation
+worms_record_fish <- lapply (df_taxa$sp, function (i) 
+  
+  tryCatch (
+    
+    wm_records_taxamatch(i, fuzzy = TRUE, marine_only = TRUE)[[1]],
+    
+    error = function (e) print(NA)
+    
+    
+  )
+  
+)
+
+names (worms_record_fish) <- df_taxa$sp
+test_taxa <- lapply (worms_record_fish,data.frame)
+test_taxa <- test_taxa[unlist(lapply(test_taxa,nrow))>=1]
+test_taxa <- test_taxa[unlist(lapply(test_taxa,ncol))>1]
+test_taxa<-do.call(rbind,test_taxa)
+
+# match with the table
+df_taxa$sp_worms <- (test_taxa[match (df_taxa$sp,rownames(test_taxa)),"scientificname"])
+
+# if missing, kepp the previous
+df_taxa$names_sp <-  ifelse (is.na(df_taxa$sp_worms),
+        df_taxa$sp,
+        df_taxa$sp_worms)
+
+# alter taxon names in the phlogeny
+table(gsub (" ","_",df_taxa$sp [(match (tree[[2]]$tip.label,
+                                  gsub (" ","_",df_taxa$sp)))]) == tree[[2]]$tip.label)
+
+
+# change tipnames by valid names
+test_tree <- lapply (tree, function (i){
+
+  i$tip.label <- df_taxa$names_sp [(match (i$tip.label,
+                                        gsub (" ","_",df_taxa$sp)))]
+  i
+
+})
+# table(gsub ("_"," ",tree[[3]]$tip.label) == test_tree[[3]]$tip.label)
+
+
+
 # load community data
 # UVC fish data
 peixes <- read.csv(here("data","UpdatedData_RMorais_et_al_2017.csv"))
 
+# dataframe with taxa name
+df_taxa_community <-data.frame (sp = unique(peixes$ScientificName)[order(unique(peixes$ScientificName))])
+df_taxa_community$sp <- gsub ("\\.", " ", df_taxa_community$sp)
+
+# worms's validation
+worms_record_fish_community <- lapply (df_taxa_community$sp, function (i) 
+  
+  tryCatch (
+    
+    wm_records_taxamatch(i, fuzzy = TRUE, marine_only = TRUE)[[1]],
+    
+    error = function (e) print(NA)
+    
+    
+  )
+  
+)
+# naming
+names (worms_record_fish_community) <- df_taxa_community$sp
+test_taxa_comm <- lapply (worms_record_fish_community,data.frame)
+test_taxa_comm <- test_taxa_comm[unlist(lapply(test_taxa_comm,nrow))>=1]
+test_taxa_comm <- test_taxa_comm[unlist(lapply(test_taxa_comm,ncol))>1]
+test_taxa_comm<-do.call(rbind,test_taxa_comm)
+
+
+# match with the table
+df_taxa_community$sp_worms <- (test_taxa_comm[match (df_taxa_community$sp,rownames(test_taxa_comm)),
+                                              "scientificname"])
+
+table (df_taxa_community$sp_worms %in% df_taxa$sp_worms)
+
+table(df_taxa_community$sp_worms %in% traits_peixes$Name )
+table(df_taxa$sp_worms %in% traits_peixes$Name )
+
+
+# if missing, kepp the previous
+df_taxa_community$names_sp <-  ifelse (is.na(df_taxa_community$sp_worms),
+                                       df_taxa_community$sp,
+                             df_taxa_community$sp_worms)
+
+
+# match with dataset
+
+peixes$validScientificName <- df_taxa_community$names_sp [match (gsub ("\\."," ", peixes$ScientificName),
+                                  df_taxa_community$sp)]
+
+# save worms data
+save (worms_record_fish, worms_record_fish_community , 
+      file = here ("output", "tax_validation_fish.RData"))
+
+
+
+
+# ======================================================
+
+
 ## modify eventID to rm year
 eventID_MOD  <- paste (peixes$Region, peixes$Locality,peixes$Site, peixes$eventDepth,
                        sep = "_")
+
 peixes$eventID_MOD <- eventID_MOD
+
+
 # number of belt transects
 length(unique(peixes$Transect_id))
 
@@ -28,12 +136,14 @@ length(unique(peixes$Transect_id))
 length(unique(peixes$Locality))
 
 # obtain table 
-tab_sp_site<-cast(formula = eventID_MOD ~ ScientificName,
+tab_sp_site<-cast(formula = eventID_MOD ~ validScientificName,
      value="IndCounting",
      data=peixes,
      fun.aggregate=sum)
+
 # transforming into DF
 tab_sp_site<-(data.frame(tab_sp_site))
+
 # site names
 sites <- tab_sp_site$eventID_MOD
 
@@ -66,7 +176,7 @@ rownames(traits_peixes) <- traits_peixes$Name
 
 # calculate functional metrics
 ## subset of fish traits and communities
-tab_sp_site<- tab_sp_site[,which(colnames(tab_sp_site) %in% traits_peixes$Name)] # spp in the trait dataset
+tab_sp_site<- tab_sp_site[,which(tolower (colnames(tab_sp_site)) %in% traits_peixes$Name)] # spp in the trait dataset
 #subset_traits_peixes <- traits_peixes[which(traits_peixes$Name %in% colnames(tab_sp_site)),] # traits in the community
 ## interesting traits
 interesting_traits <- c("Body_size", "Trophic_level", "Aspect_ratio","Depth_max","TemPref_mean")
@@ -85,6 +195,10 @@ std_traits<-data.frame(std_traits)# dataframe (to dbFD function)
 rownames(std_traits)<- rownames(subset_traits_peixes) #lose names
 
 # imputation without phylogeny
+# proportion of missing data
+table(is.na(std_traits))[2]/sum(table(is.na(std_traits)))
+
+# imput
 require(missForest)
 std_traits <- missForest (std_traits, maxiter = 50,
                           ntree= 100,variablewise = T)
@@ -97,21 +211,15 @@ std_traits<-std_traits$ximp
 ## capture per trapping effort (number of transects per site)
 tab_sp_site <- (tab_sp_site / effort_site$effort)
 
-# adjust tip labels
-# phylogeny
-tree<-lapply (tree, function (i) {
-  
-  i$tip.label<-tolower(gsub("_",".", i$tip.label))
-  ;
-  i
-  })
-
+# adjust trait names
+rownames(std_traits) <- firstup (gsub ("\\.", " ",rownames(std_traits)))
+colnames(tab_sp_site)<-firstup (gsub ("\\.", " ",colnames(tab_sp_site)))
 
 # table(colnames(tab_sp_site) %in% tree$tip.label)
 # finally, match phylogeny, traits, and community
 # match phylogenetic and trait data
 
-match_data <- lapply (tree, function (i) 
+match_data <- lapply (test_tree, function (i) 
   
                   match.phylo.data(i, 
                                std_traits)
@@ -128,7 +236,8 @@ match_comm_data<-lapply(match_data, function (i)
 subset_trait_data <-lapply (seq(1,length(match_data)), function (i) 
   
   
-  match_data[[i]]$data[which(rownames(match_data[[i]]$data) %in% colnames(match_comm_data[[i]]$comm)),]
+  match_data[[i]]$data[which(rownames(match_data[[i]]$data) %in% 
+                               colnames(match_comm_data[[i]]$comm)),]
 
 )
 # subset comm data  
@@ -140,26 +249,37 @@ subset_comm_data <- lapply (seq(1,length(match_comm_data)), function (i)
 
 # phylogenetic signal
 
-psignal <- lapply (seq(1,ncol (match_data[[1]]$data)), function (i)
+psignal <- lapply (seq(1,length(match_data)), function (k)
   
-  phylosig(match_data[[1]]$phy, 
-           match_data[[1]]$data[,i], 
+  lapply (seq(1,ncol (match_data[[k]]$data)), function (i)
+  
+  phylosig(match_data[[k]]$phy, 
+           match_data[[k]]$data[,i], 
            method="K", test=TRUE, nsim=999)
-)
+))
 
 # df with res
-psignal <- do.call (rbind, 
+psignal <- lapply (psignal, function (k) do.call (rbind, 
          
-         lapply (psignal, function (i)
+         lapply (k, function (i)
            
            data.frame (K=i$K,
                        pval=i$P)
          )
-)
+))
 
+# signal K
+apply(sapply (psignal, "[[", "K"),1,mean)
+apply(sapply (psignal, "[[", "K"),1,sd)
+
+# save
 save.image(here ( "Output","image_fish.RData"))
 
 # =======================================================
+
+load(here ( "Output","image_fish.RData"))
+
+
 # run
 empirical_FD <- lapply (seq (1,length (subset_comm_data)), function (i)
                              
@@ -208,7 +328,7 @@ simul_param_BM <- lapply (match_data, function (i)
   
 )
 
-# ancestral states for each traits
+# ancestral states for each trait
 theta<-rep(0,ntraits)
 
 # Simulate
@@ -275,6 +395,9 @@ simul_param_EB <- lapply (match_data, function (i)
                 ncores = nc)
   
   )
+
+# ancestral states for each trait
+theta<-rep(0,ntraits)
 
 #run trait simulation
 simul_EB<-lapply (seq(1,length(match_data)), function (i) 
@@ -345,6 +468,8 @@ simul_param_OU <- lapply (match_data, function (i)
                 SE=NA)
   
   )
+# ancestral states for each trait
+theta<-rep(0,ntraits)
 
 #run trait simulation
 simul_OU<-lapply (seq(1,length(match_data)), function (i) 

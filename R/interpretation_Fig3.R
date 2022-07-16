@@ -12,6 +12,60 @@ load (here("Output", "simulated_FD_EB_rodents.RData"))
 load (here("Output", "simulated_FD_OU_rodents.RData"))
 load (here("Output", "empirical_FD_rodents.RData"))
 
+# density plot of macroevolutionary model parameters
+
+# params
+# BM
+
+df_params<- lapply (seq (1,5), function (k){
+
+  df_sigma_BM <- data.frame (Estimates = unlist(lapply (simul_param_BM, function (i) i[[k]]$opt$sigsq)),
+                             Parameter = "sigma",
+                             model = "BM",
+                             Trait = names(simul_param_BM[[k]]))
+  df_sigma_EB <- data.frame (Estimates = unlist(lapply (simul_param_EB, function (i) i[[k]]$opt$sigsq)),
+                             Parameter = "sigma",
+                             model = "EB",
+                             Trait = names(simul_param_BM[[k]]))
+  df_beta_EB <- data.frame (Estimates = unlist(lapply (simul_param_EB, function (i) i[[k]]$opt$a)),
+                            Parameter = "beta", 
+                            model = "EB",
+                            Trait = names(simul_param_BM[[k]]))
+  df_sigma_OU <- data.frame (Estimates = unlist(lapply (simul_param_OU, function (i) i[[k]]$opt$sigsq)),
+                             Parameter = "sigma",
+                             model = "OU",
+                             Trait = names(simul_param_BM[[k]]))
+  df_alpha_OU <- data.frame (Estimates = unlist(lapply (simul_param_OU, function (i) i[[k]]$opt$alpha)),
+                             Parameter = "alpha",
+                             model = "OU",
+                             Trait = names(simul_param_BM[[k]]))
+  # rbind
+  df_density <- rbind (df_sigma_BM,
+                       df_sigma_EB,
+                       df_beta_EB,
+                       df_sigma_OU,
+                       df_alpha_OU)
+})
+# melt 
+df_params<-do.call(rbind,df_params)
+
+# plot
+# density plot
+fig_params_rodents <- ggplot(df_params, 
+                        aes(x=Estimates,
+                            group=Trait,
+                            color=Trait,
+                            fill=Parameter)) +
+  geom_density(size=1,alpha=0.05)+
+  scale_fill_viridis_d(option = "magma")+
+  scale_colour_viridis_d(option = "magma")+
+  theme_classic()  + 
+  facet_wrap(~model+Parameter,scales = "free")+
+  theme (legend.position = c(0.81,0.23),
+         axis.text.x = element_text(size=7))
+fig_params_rodents
+
+# ----------------------------------------------------------------
 # empirical results
 empirical_results <- data.frame (SR= apply(sapply(empirical_FD,"[[","nbsp"),1,mean),
                                  FRic= apply(sapply(empirical_FD,"[[","FRic"),1,mean),
@@ -95,6 +149,7 @@ p1<-plot(conditional_effects(model.ancova.FRic,
   
   ylab ("Functional Richness (FRic)")
 
+p1
 
 # compare slopes
 
@@ -160,6 +215,55 @@ load (here("Output", "simulated_FD_BM_fish.RData"))
 load (here("Output", "simulated_FD_EB_fish.RData"))
 load (here("Output", "simulated_FD_OU_fish.RData"))
 load (here("Output", "empirical_FD_fish.RData"))
+
+df_params<- lapply (seq (1,5), function (k){
+  
+  df_sigma_BM <- data.frame (Estimates = unlist(lapply (simul_param_BM, function (i) i[[k]]$opt$sigsq)),
+                             Parameter = "sigma",
+                             model = "BM",
+                             Trait = names(simul_param_BM[[k]]))
+  df_sigma_EB <- data.frame (Estimates = unlist(lapply (simul_param_EB, function (i) i[[k]]$opt$sigsq)),
+                             Parameter = "sigma",
+                             model = "EB",
+                             Trait = names(simul_param_BM[[k]]))
+  df_beta_EB <- data.frame (Estimates = unlist(lapply (simul_param_EB, function (i) i[[k]]$opt$a)),
+                            Parameter = "beta", 
+                            model = "EB",
+                            Trait = names(simul_param_BM[[k]]))
+  df_sigma_OU <- data.frame (Estimates = unlist(lapply (simul_param_OU, function (i) i[[k]]$opt$sigsq)),
+                             Parameter = "sigma",
+                             model = "OU",
+                             Trait = names(simul_param_BM[[k]]))
+  df_alpha_OU <- data.frame (Estimates = unlist(lapply (simul_param_OU, function (i) i[[k]]$opt$alpha)),
+                             Parameter = "alpha",
+                             model = "OU",
+                             Trait = names(simul_param_BM[[k]]))
+  # rbind
+  df_density <- rbind (df_sigma_BM,
+                       df_sigma_EB,
+                       df_beta_EB,
+                       df_sigma_OU,
+                       df_alpha_OU)
+})
+# melt 
+df_params<-do.call(rbind,df_params)
+
+# plot
+# density plot
+fig_params_fish <- ggplot(df_params, 
+                             aes(x=Estimates,
+                                 group=Trait,
+                                 color=Trait,
+                                 fill=Parameter)) +
+  geom_density(size=1,alpha=0.05)+
+  scale_fill_viridis_d(option = "magma")+
+  scale_colour_viridis_d(option = "magma")+
+  theme_classic()  + 
+  facet_wrap(~model+Parameter,scales = "free")+
+  theme (legend.position = c(0.81,0.23))
+fig_params_fish
+
+# =-----------------------------------------------------------------
 
 # empirical results
 empirical_results <- data.frame (SR= apply(sapply(empirical_FD,"[[","nbsp"),1,mean),
@@ -334,9 +438,13 @@ ggplot (data = df_fig4, aes (x=SR, y=SES))+
   geom_point(data = df_fig4, 
              aes (x=SR, y=SES,col=Significance),
              size=1.75)  +
-  scale_color_manual(values=c("#E69F00","#999999",  "#56B4E9"))+
+  scale_color_manual(values=c("#E69F00","#999999",  "#56B4E9"),
+                     name = "Deviations from\na BM model",
+                     labels = c("Positive",
+                                "None",
+                                "Negative"))+
   theme(legend.position = c(0.90,0.15)) + 
-  ylab ("Neutral SES") + 
+  ylab ("Standardized Effect Size") + 
   xlab ("Species richness gradient")
   
   

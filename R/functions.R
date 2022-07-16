@@ -5,6 +5,13 @@ closest<-function(xv,sv){
   xv[which(abs(xv-sv)==min(abs(xv-sv)))]}
 
 
+## toupper for species names
+
+firstup <- function(x) {
+  substr(x, 1, 1) <- toupper(substr(x, 1, 1))
+  x
+}
+
 
 # Here is the function (copy and paste it into R):
 # frm here : https://rfunctions.blogspot.com/2016/08/simulating-phylogenetically-conserved.html
