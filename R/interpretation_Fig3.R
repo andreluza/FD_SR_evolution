@@ -202,13 +202,14 @@ pdf(here("Output","Fig3_SM.pdf"), width=9,height=5)
 grid.arrange(p1,p2,nrow=1)
 dev.off()
 
-install.packages("marginaleffects")
+require("marginaleffects")
 library(brms)
 library(ggplot2)
 library(ggdist)
 
 predictions(model.ancova.FEve)
-
+plot_slopes(model.ancova.FEve)
+plot_predictions(model.ancova.FRic)
 # compare slopes
 m.lst.FEve <- emmeans(model.ancova.FEve, FEve ~ Dataset)
 
@@ -454,13 +455,17 @@ ggplot (data = df_fig4, aes (x=SR, y=SES))+
   facet_wrap(~Organism, scale="free") + 
   geom_point(data = df_fig4, 
              aes (x=SR, y=SES,col=Significance),
-             size=1.75)  +
+             size=2)  +
   scale_color_manual(values=c("#E69F00","#999999",  "#56B4E9"),
                      name = "Deviations from\na BM model",
                      labels = c("Positive",
                                 "None",
                                 "Negative"))+
-  theme(legend.position = c(0.90,0.15)) + 
+  theme(legend.position = c(0.90,0.15),
+        
+        strip.text = element_text(size=15),
+        axis.title = element_text(size=14),
+        axis.text = element_text(size=12)) + 
   ylab ("Standardized Effect Size") + 
   xlab ("Species richness gradient")
   
