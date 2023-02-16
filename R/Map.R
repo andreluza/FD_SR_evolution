@@ -15,6 +15,11 @@ coords_fish <- data.frame (Lon = aggregate(peixes$Lon, by =list(data=peixes$even
 # axes
 axes_fish <- empirical_FD[[1]]$x.axes
 
+# bind FD
+coords_fish$FRic <- rowMeans(sapply (empirical_FD, "[[", "FRic"))
+# bind FD
+coords_fish$FEve <- rowMeans(sapply (empirical_FD, "[[", "FEve"))
+
 # community
 comm_fish <- match_comm_data[[1]]$comm
 
@@ -97,6 +102,12 @@ load(here ("Output", "empirical_FD_rodents.RData"))
 
 # axes
 axes_rodents <- empirical_FD[[1]]$x.axes
+
+# bind FD
+spatial_effort_data_LF$FRic <- rowMeans(sapply (empirical_FD, "[[", "FRic"))
+# bind FD
+spatial_effort_data_LF$FEve <- rowMeans(sapply (empirical_FD, "[[", "FEve"))
+
 
 # community
 comm_rodents <- match_comm_data[[1]]$comm
@@ -181,7 +192,7 @@ world <- ne_countries(scale = "medium", returnclass = "sf")
 wm <- ggplot() + 
   geom_sf (data=world, size = 0.1, 
            fill= "#aaaaaa",colour="#aaaaaa") +
-  coord_sf (xlim = c(-20,-65),  ylim = c(-35, 4), expand = T,crs = st_crs(4326)) +
+  coord_sf (xlim = c(-20,-80),  ylim = c(-55, 10), expand = T,crs = st_crs(4326)) +
   theme_bw() + #xlab ("Longitude")  + ylab ("Latitude") +
   theme(panel.border = element_blank(), 
         panel.grid.major = element_blank(), 
@@ -205,11 +216,11 @@ wm <- wm + annotate("segment",
 # rodents
 map_rodents <- wm +  geom_point (data=spatial_effort_data_LF,aes(x=Longitude, y=Latitude),
                                  size=2,
-                                col="#FFF9B6")
+                                col="yellow")
 # fish
 map_fish_rodents <- map_rodents + 
   geom_point(data=coords_fish, aes(x=Lon.x, y=Lat),size=2,
-             col="#0e49b5")
+             col="cyan")
 
 # arrange all
 pdf(file=here("Output","Fig2.pdf"),height=7,width=10)
@@ -225,4 +236,49 @@ grid.arrange(array_rodents,
                                     c(1,2,2,2,3)))
 
 dev.off()
+
+
+# rodent and fish relationshio of FD with latitude
+
+m1_fric_fish <- with (coords_fish, lm (FRic ~ Lat))
+m1_fric_rodent <- with (spatial_effort_data_LF, lm (FRic ~ Latitude))
+m1_feve_fish <- with (coords_fish, lm (FEve ~ Lat))
+m1_feve_rodent <- with (spatial_effort_data_LF, lm (FEve ~ Latitude))
+
+
+plot (NA,xlim = c(-35,20), ylim = c(0,1),
+      xlab= "Latitude",
+      ylab = "Functional metric")
+
+lines (seq(-35, 20, 1),
+      
+      m1_fric_fish$coefficients[1] + m1_fric_fish$coefficients[2]*seq(-35, 20, 1),
+      col = "cyan",lwd=2
+)
+
+lines (seq(-35, 20, 1),
+       
+       m1_fric_rodent$coefficients[1] + m1_fric_rodent$coefficients[2]*seq(-35, 20, 1),
+       col = "yellow",lwd=2
+)
+#FEVE
+lines (seq(-35, 20, 1),
+       
+       m1_feve_fish$coefficients[1] + m1_feve_fish$coefficients[2]*seq(-35, 20, 1),
+       col = "cyan",lwd=2,lty=2
+)
+
+lines (seq(-35, 20, 1),
+       
+       m1_feve_rodent$coefficients[1] + m1_feve_rodent$coefficients[2]*seq(-35, 20, 1),
+       col = "yellow",lwd=2,lty=2
+)
+legend ("topright",
+        c("Rodent (yellow)",
+          "Fish (cyan)",
+          "FRic (solid)",
+          "FEve (dashed)"),
+        lty = c(1,1,1,2),
+        col = c("yellow", "cyan","black","black"),
+        bty= "n")
 

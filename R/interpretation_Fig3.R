@@ -48,7 +48,7 @@ df_params<- lapply (seq (1,5), function (k){
 })
 # melt 
 df_params<-do.call(rbind,df_params)
-
+require(ggplot2)
 # plot
 # density plot
 fig_params_rodents <- ggplot(df_params, 
@@ -120,6 +120,7 @@ model.ancova.FRic <- brm (FRic ~ poly(SR,2)*Dataset,
                           warmup = nb,
                           thin=nt)
 
+
 # summary of results
 summary (model.ancova.FRic)
 tab_model(model.ancova.FRic)
@@ -138,7 +139,8 @@ p1<-plot(conditional_effects(model.ancova.FRic,
            theme (axis.title = element_text(size=15),
                   axis.text = element_text(size=12),
                   legend.position = "top") ,
-         points=T) [[1]] + 
+         points=T,
+         point_args = list (width = 0.25,alpha=0.3)) [[1]] + 
   
   
   scale_color_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
@@ -153,11 +155,13 @@ p1
 
 # compare slopes
 
-m.lst.FRic <- emtrends (model.ancova.FRic, "Dataset", var="SR")
+m.lst.FRic <- emmeans::emtrends (model.ancova.FRic, "Dataset", var="SR")
 # m.lst_tab.FRic <- summary(m.lst.FRic,point.est = mean)
 
+terms(model.ancova.FRic)
+
 # run model (ancova)
-model.ancova.FEve <- brm (FEve ~ poly(SR,2)*Dataset,
+model.ancova.FEve <- brm (FEve ~ (poly(SR,2))*Dataset,
                           data=df_analyzes,
                           family = gaussian (link="identity"),
                           chains=nc,
@@ -183,7 +187,8 @@ p2<-plot(conditional_effects(model.ancova.FEve,
            theme (axis.title = element_text(size=15),
                   axis.text = element_text(size=12),
                   legend.position = "top") ,
-         points=T) [[1]] + 
+         points=T,
+         point_args = list (width = 0.25,alpha=0.3)) [[1]] + 
   
   scale_color_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
   scale_fill_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
@@ -197,10 +202,22 @@ pdf(here("Output","Fig3_SM.pdf"), width=9,height=5)
 grid.arrange(p1,p2,nrow=1)
 dev.off()
 
-# compare slopes
-m.lst.FEve <- emtrends (model.ancova.FEve, "Dataset", var="SR")
-# m.lst_tab.FEve <- summary(m.lst.FEve,point.est = mean)
+install.packages("marginaleffects")
+library(brms)
+library(ggplot2)
+library(ggdist)
 
+predictions(model.ancova.FEve)
+
+# compare slopes
+m.lst.FEve <- emmeans(model.ancova.FEve, FEve ~ Dataset)
+
+allEffects (model.ancova.FEve)
+
+# m.lst_tab.FEve <- summary(m.lst.FEve,point.est = mean)
+ref_grid(model.ancova.FEve)
+
+plot(allEffects(model.ancova.FEve))
 # save results
 save (model.ancova.FRic,
       m.lst.FRic,

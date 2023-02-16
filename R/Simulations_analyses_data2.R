@@ -156,12 +156,14 @@ tree_list <- lapply (tree_list, function (i)
 # traits
 traits<- read.csv (here("data2", "Penone_et_al_2016_mammal_trait_data_imputed.csv"),
                    sep=",")
+cor (traits$MaxLifepsan,traits$AdultHeadBodyLen.mm,use="complete.obs")
+
 # standradize traits
 std_traits <- data.frame (Body.mass.g = scale(traits$Body.mass.g),
                           LitSz = scale(traits$LitSz),
                           LitPerYear = scale(traits$LitPerYear),
                           MaxLifepsan = scale(traits$MaxLifepsan.m),
-                          PopDen.n.km2 = scale(traits$PopDen.n.km2)
+                          AdultHeadBodyLen.mm = scale(traits$AdultHeadBodyLen.mm)
                           )
 rownames(std_traits)<- traits$IUCN.binomial                          
 # percentage of missing entries
@@ -249,7 +251,8 @@ apply(sapply (psignal, "[[", "K"),1,sd)
 
 # rownames(std_traits_subset) == match_comm_data$UNTITLED$phy$tip.label
 save.image(here ( "Output","image_rodents.RData"))
-
+require(here)
+load(here ( "Output","image_rodents.RData"))
 # -----------------------------------------
 # calculate indices
 
@@ -280,6 +283,7 @@ ntraits<-ncol(std_traits_subset)
 # Number of simulated (pairs of) traits
 nsim<-50
 nc<-5
+
 # simulate parameters
 simul_param_BM <- lapply (match_data, function (i) 
   
@@ -305,7 +309,7 @@ simul<-lapply (seq(1,length(tree_list)), function (i)
                                       simul_param_BM[[i]]$LitSz$opt$sigsq,
                                       simul_param_BM[[i]]$LitPerYear$opt$sigsq,
                                       simul_param_BM[[i]]$MaxLifepsan$opt$sigsq,
-                                      simul_param_BM[[i]]$PopDen.n.km2$opt$sigsq)),
+                                      simul_param_BM[[i]]$AdultHeadBodyLen.mm$opt$sigsq)),
                         theta=theta,
                         ntraits=ntraits,
                         names_traits=c("Trait 1",
@@ -383,12 +387,12 @@ simul_EB<-parLapply (cl, seq(1,length(tree_list)), function (i)
                                  simul_param_EB[[i]]$LitSz$opt$sigsq,
                                  simul_param_EB[[i]]$LitPerYear$opt$sigsq,
                                  simul_param_EB[[i]]$MaxLifepsan$opt$sigsq,
-                                 simul_param_EB[[i]]$PopDen.n.km2$opt$sigsq)), 
+                                 simul_param_EB[[i]]$AdultHeadBodyLen.mm$opt$sigsq)), 
                    beta=diag (c(simul_param_EB[[i]]$Body.mass.g$opt$a,
                                 simul_param_EB[[i]]$LitSz$opt$a,
                                 simul_param_EB[[i]]$LitPerYear$opt$a,
                                 simul_param_EB[[i]]$MaxLifepsan$opt$a,
-                                simul_param_EB[[i]]$PopDen.n.km2$opt$a)),
+                                simul_param_EB[[i]]$AdultHeadBodyLen.mm$opt$a)),
                    theta=theta,
                    ntraits=ntraits,
                    names_traits=c("Trait 1",
@@ -464,12 +468,12 @@ simul_OU<-parLapply (cl, seq(1,length(tree_list)), function (i)
                                    simul_param_OU[[i]]$LitSz$opt$sigsq,
                                    simul_param_OU[[i]]$LitPerYear$opt$sigsq,
                                    simul_param_OU[[i]]$MaxLifepsan$opt$sigsq,
-                                   simul_param_OU[[i]]$PopDen.n.km2$opt$sigsq)), 
+                                   simul_param_OU[[i]]$AdultHeadBodyLen.mm$opt$sigsq)), 
                      alpha = diag (c(simul_param_OU[[i]]$Body.mass.g$opt$alpha,
                                      simul_param_OU[[i]]$LitSz$opt$alpha,
                                      simul_param_OU[[i]]$LitPerYear$opt$alpha,
                                      simul_param_OU[[i]]$MaxLifepsan$opt$alpha,
-                                     simul_param_OU[[i]]$PopDen.n.km2$opt$alpha)),
+                                     simul_param_OU[[i]]$AdultHeadBodyLen.mm$opt$alpha)),
                      theta=theta,
                      ntraits=ntraits,
                      names_traits=c("Trait 1",

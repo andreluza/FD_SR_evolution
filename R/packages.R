@@ -26,6 +26,8 @@ require(gridExtra)
 # analyses
 require(brms)
 require(emmeans)
+require(cmdstanr)
+
 
 
 # table
