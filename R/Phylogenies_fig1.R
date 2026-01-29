@@ -11,10 +11,12 @@ niche_filling <-evotrait(nsp=10, phymin=3, phymax=+Inf, delta=TRUE)
 labile  <-evotrait(nsp=10, phymin=-1, phymax=0.2,  delta=TRUE)
 # random
 brownian <-evotrait(nsp=10, phymin=0.95, phymax=1.05,  delta=TRUE)
+# OU
+ou <-evotrait(nsp=10, phymin=8, phymax=+Inf,  delta=TRUE)
 
 # pdf
 pdf(here("Output","trait_signal.pdf"),width=12,height=5)
-par (mfrow=c(3,3))
+par (mfrow=c(2,2))
 
 # We want to confirm that the trait is  convergent. We can make a graph for that using the first phylogeny and the first vector of simulated trait values.
 b<-contMap(niche_filling[[1]] [[1]], 
@@ -51,6 +53,19 @@ a<-setMap(a,
             "#2D2424"))
 
 plot(a,fsize=c(1,0.8),
+     leg.txt="Trait value",
+     lwd=7)
+
+# OU
+# We want to confirm that the trait is highly conserved. We can make a graph for that using the first phylogeny and the first vector of simulated trait values.
+o<-contMap(niche_filling[[1]] [[1]], 
+           ou[[2]] [[1]],plot=F)
+## change color scheme
+o<-setMap(o,
+          c("white","#F6F6F6","#AAA492","#9D9D9D",
+            "#2D2424"))
+
+plot(o,fsize=c(1,0.8),
      leg.txt="Trait value",
      lwd=7)
 

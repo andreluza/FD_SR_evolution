@@ -40,10 +40,14 @@ test_taxa<-do.call(rbind,test_taxa)
 # match with the table
 df_taxa$sp_worms <- (test_taxa[match (df_taxa$sp,rownames(test_taxa)),"scientificname"])
 
-# if missing, kepp the previous
+# if missing, keep the previous name
 df_taxa$names_sp <-  ifelse (is.na(df_taxa$sp_worms),
         df_taxa$sp,
         df_taxa$sp_worms)
+
+
+# filter labridae
+df_taxa <- df_taxa[which(df_taxa$family == "Labridae"),]
 
 # alter taxon names in the phlogeny
 table(gsub (" ","_",df_taxa$sp [(match (tree[[2]]$tip.label,
@@ -115,6 +119,93 @@ peixes$validScientificName <- df_taxa_community$names_sp [match (gsub ("\\."," "
 # save worms data
 save (worms_record_fish, worms_record_fish_community , 
       file = here ("output", "tax_validation_fish.RData"))
+
+
+
+# -----------------------
+
+#  BioOracle 
+# codes to download and save in the folder "environment"
+# BiO Oracle - extracting covariate data
+# Explore datasets in the package
+# devtools::install_github("lifewatch/sdmpredictors")
+# layers <- list_layers()
+# View (layers [grep ("Bio-ORACLE",layers$dataset_code),])
+# Download specific layers to the current directory
+# set prefered folder (to download data)
+# options(sdmpredictors_datadir=here ("data","environment"))
+## chlorophil has different extent - loading and extracting in two steps         
+# layers_oracle <- load_layers(c("BO2_tempmean_ss",
+#                               "BO2_ppmean_ss", 
+#                               "BO2_salinitymean_ss", 
+#                               "BO_damean"
+#                              ))
+
+biooracle_data <-  (list.files (here ("data","environment"),pattern = ".tif"))
+biooracle_data <- lapply (biooracle_data, function (i) 
+  
+    raster (here ("data","environment",i))
+)
+biooracle_data<- stack (biooracle_data)#stack
+
+# coord to sppoints df to extract
+spdf <- SpatialPointsDataFrame(coords = coordinates_sites[,3:2], data = coordinates_sites,
+                         proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs"))
+
+## extracting data
+
+extracted_sea_data <- raster::extract (biooracle_data, 
+                                       spdf,method='bilinear', 
+                               fun=mean)
+rownames (extracted_sea_data) <- sites
+
+
+# ------------------------------
+#  distance offshore
+# BR coastline, download from here https://mapcruzin.com/free-brazil-arcgis-maps-shapefiles.htm
+
+#BR <- readOGR(dsn=here("data", "environment","brazil-coastline"), "brazil_coastline")
+BR <- st_read(("data/environment/brazil-coastline/brazil_coastline.shp"))
+#crs(BR) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0" 
+#BR <- spTransform(BR, CRS("+init=epsg:4326"))
+st_crs(BR) <- st_crs(4326) # assign crs
+
+# use dist2Line from geosphere - only works for WGS84 
+sp_data <- st_as_sf(spdf, coords = c("decimalLongitude", "decimalLatitude"))
+st_crs(sp_data) <- st_crs(4326) # assign crs
+
+# measuring the distance
+#dist_bentos <- st_distance(x = sp_data, 
+#                             y = (BR))
+# help : https://gis.stackexchange.com/questions/243994/how-to-calculate-distance-from-point-to-linestring-in-r-using-sf-library-and-g
+dist_bentos <- geosphere::dist2Line(p = st_coordinates(sp_data), 
+                     line = st_coordinates(BR)[,1:2])
+
+# binding coords
+coordinates_sites <- cbind (coordinates_sites, dist_bentos)
+
+
+# plot
+ggplot(data = world) +
+  geom_sf() +
+  geom_point(data=coordinates_sites, 
+             aes(x=decimalLongitude  , y=decimalLatitude , col =distance))# +
+  #coord_sf(xlim = c(-55, -20), ylim = c(-33,0 ), expand = FALSE)
+
+
+
+# all covariate data into a dataframe
+
+site_covs <- data.frame (sites = sites,
+                         region = site_region,
+                         sst = extracted_sea_data[,'BO2_tempmean_ss_lonlat'],
+                         turbidity = extracted_sea_data[,'BO_damean_lonlat'],
+                         productivity = extracted_sea_data[,'BO2_ppmean_ss_lonlat'],
+                         salinity = extracted_sea_data[,'BO2_salinitymean_ss_lonlat'],
+                         depth = site_depth,
+                         offshore_distance = coordinates_sites$distance,
+                         decimalLatitude = coordinates_sites$decimalLatitude,
+                         decimalLongitude = coordinates_sites$decimalLongitude)
 
 
 

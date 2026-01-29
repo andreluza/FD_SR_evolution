@@ -13,6 +13,9 @@ require(picante)
 require(mvMORPH)
 require(parallel)
 
+# trait imputation
+require(missForest)
+
 # functional diversity
 require (FD)
 
@@ -22,13 +25,13 @@ require("fishtree")
 # plot
 require(ggplot2)
 require(gridExtra)
+require(scales)
+require("tidybayes")
 
 # analyses
 require(brms)
 require(emmeans)
-require(cmdstanr)
-
-
+require(cmdstanr) # install.packages("cmdstanr", repos = c('https://stan-dev.r-universe.dev', getOption("repos")))
 
 # table
 library("sjPlot")
@@ -43,8 +46,7 @@ require(gridExtra)
 require(ggrepel)
 require (scatterpie)
 require(sf)
-require(rgeos)
+require(terra)
 
-
-# taxonomic validation
+# taxonomic validation (Fish)
 require(worrms)
