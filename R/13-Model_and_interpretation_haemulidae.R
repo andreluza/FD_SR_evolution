@@ -14,9 +14,9 @@ require(here)
 # analyses
 # MCMC settings
 nc<-3
-ni<-10000
-nb<-5000
-nt<-10
+ni<-5000
+nb<-1000
+nt<-20
 
 # prior sigma
 #priors<-c(set_prior("normal(0,5)",class = "sigma"))
@@ -93,11 +93,11 @@ empirical_results <- data.frame (SR= apply(sapply(empirical_FD,"[[","nbsp"),1,me
                                  Dataset= "Empirical")
 
 # random traits
-simulated_results_random <- data.frame (SR= apply(sapply(simulated_FD_random,"[[","nbsp"),1,mean),
-                                    FRic= apply(sapply(simulated_FD_random,"[[","FRic"),1,mean),
-                                    FEve=apply(sapply(simulated_FD_random,"[[","FEve"),1,mean),
-                                    Dataset= "SimulatedRandom")
-
+#simulated_results_random <- data.frame (SR= apply(sapply(simulated_FD_random,"[[","nbsp"),1,mean),
+#                                    FRic= apply(sapply(simulated_FD_random,"[[","FRic"),1,mean),
+#                                    FEve=apply(sapply(simulated_FD_random,"[[","FEve"),1,mean),
+#                                    Dataset= "SimulatedRandom")
+#
 
 # average of simulated values (brownian motion)
 simulated_results_BM <- data.frame (SR= apply(sapply(simulated_FD,"[[","nbsp"),1,mean),
@@ -119,26 +119,27 @@ simulated_results_OU <- data.frame (SR= apply(sapply(simulated_FD_OU,"[[","nbsp"
 
 # bind them
 df_analyzes <- rbind(empirical_results,
-                     simulated_results_random,
+                     #simulated_results_random,
                      simulated_results_BM,
                      simulated_results_EB,
                      simulated_results_OU)
 
 # add covariates
 reef_covariates <- rbind(reef_covariates[which(rowSums(subset_comm_data[[1]]) >0),],
-                         reef_covariates[which(rowSums(subset_comm_data[[1]]) >0),],
+                        # reef_covariates[which(rowSums(subset_comm_data[[1]]) >0),],
                          reef_covariates[which(rowSums(subset_comm_data[[1]]) >0),],
                          reef_covariates[which(rowSums(subset_comm_data[[1]]) >0),],
                          reef_covariates[which(rowSums(subset_comm_data[[1]]) >0),])
 
 # bind
 df_analyzes <- cbind(df_analyzes,
-      turbidity = scale(reef_covariates[,"BO_damean_lonlat"]),
-      salinity = scale(reef_covariates[,"Present.Surface.Salinity.Mean"]),
-      temperature = scale(reef_covariates[,"Present.Surface.Temperature.Mean"]),
-      productivity = scale(reef_covariates[,"Present.Surface.Primary.productivity.Mean"]),
-      latitude = scale(reef_covariates[,"decimalLatitude"]),
-      area = scale(reef_covariates[,"Reef.Area"]))
+                     region = reef_covariates$Region,
+                    turbidity = scale(reef_covariates[,"BO_damean_lonlat"]),
+                    salinity = scale(reef_covariates[,"Present.Surface.Salinity.Mean"]),
+                    temperature = scale(reef_covariates[,"Present.Surface.Temperature.Mean"]),
+                    productivity = scale(reef_covariates[,"Present.Surface.Primary.productivity.Mean"]),
+                    latitude = scale(reef_covariates[,"decimalLatitude"]),
+                    area = scale(reef_covariates[,"Reef.Area"]))
 
 # bind effort
 df_analyzes <- cbind (df_analyzes,
@@ -148,7 +149,7 @@ df_analyzes <- cbind (df_analyzes,
 df_analyzes <- df_analyzes [!is.na(df_analyzes$FRic),] 
 
 # correlations
-cor(df_analyzes[,c(1:3,5:9,11)])
+cor(df_analyzes[,c(1:3,6:9,11)])
 
 # Number of sites used in the analyzes
 nrow(df_analyzes[df_analyzes$Dataset == "Empirical",])
@@ -161,6 +162,9 @@ df_analyzes$logFRic <- log(df_analyzes$FRic)
 df_analyzes$logFEve <- log(df_analyzes$FEve)
 df_analyzes$logSR <- log(df_analyzes$SR)
 df_analyzes$logEffort <- log(df_analyzes$effort)
+
+#load(here("Output", "GLM_test_haemulidae.RData"))
+
 
 ##---------------------------------------------------------
 
@@ -201,6 +205,8 @@ model.ancova.FRic_sq <- add_criterion(model.ancova.FRic_sq, "loo", moment_match=
 # compare
 loo_compare(model.ancova.FRic, 
             model.ancova.FRic_sq)
+pp_check(model.ancova.FRic_sq,ndraws = 100)
+pp_check(model.ancova.FRic,ndraws = 100)
 
 # plotting
 p1<-plot(conditional_effects(model.ancova.FRic_sq,
@@ -220,8 +226,8 @@ p1<-plot(conditional_effects(model.ancova.FRic_sq,
          point_args = list (width = 0.25,alpha=0.3)) [[1]]  + 
   
   
-  scale_color_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3","red4")) + 
-  scale_fill_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3","red4")) + 
+  scale_color_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
+  scale_fill_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
   
   
   xlab("Species richness gradient") + 
@@ -231,7 +237,7 @@ p1<-plot(conditional_effects(model.ancova.FRic_sq,
 p1
 
 # compare slopes
-m.lst.FRic <- emtrends (model.ancova.FRic, "Dataset", var="logSR")
+m.lst.FRic <- emtrends (model.ancova.FRic_sq, "Dataset", var="logSR")
 m.lst_tab.FRic <- summary(m.lst.FRic,point.est = mean)
 m.lst_tab.FRic
 
@@ -244,13 +250,13 @@ mod_dat <- lapply (unique(df_analyzes$Dataset)[1:2], function (i) {
   # fit the model
   dat <- df_analyzes [which(df_analyzes$Dataset == i),]
   # do LM
-  mod_dat <- brm (formula = Residuals_FRic ~  Reef.Area + 
+  mod_dat <- brm (formula = Residuals_FRic ~ region + Reef.Area + 
                     BO_damean_lonlat + 
                     Present.Surface.Salinity.Mean+
                     Present.Surface.Temperature.Mean+
                     decimalLatitude,
                   data = dat,
-                  prior= priors,
+                  #prior= priors,
                   family = gaussian (link="identity"),
                   chains=nc,
                   iter = ni,
@@ -304,8 +310,10 @@ model.ancova.FEve_sq <- add_criterion(model.ancova.FEve_sq, "loo", moment_match=
 loo_compare(model.ancova.FEve, 
             model.ancova.FEve_sq)
 
+pp_check(model.ancova.FEve,ndraws = 100)
+
 # plotting
-p2<-plot(conditional_effects(model.ancova.FEve_sq,
+p2<-plot(conditional_effects(model.ancova.FEve,
                              method="posterior_epred",
                              re_formula=NA,
                              robust=T,
@@ -321,8 +329,8 @@ p2<-plot(conditional_effects(model.ancova.FEve_sq,
          points=T,
          point_args = list (width = 0.25,alpha=0.3)) [[1]]  + 
   
-  scale_color_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3","red4")) + 
-  scale_fill_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3","red4")) + 
+  scale_color_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
+  scale_fill_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
   
   xlab("Species richness gradient") + 
   
@@ -349,13 +357,13 @@ mod_dat_FEve<-lapply (unique(df_analyzes$Dataset)[1:2], function (i) {
   # fit the model
   dat <- df_analyzes [which(df_analyzes$Dataset == i),]
   # do LM
-  mod_dat <- brm (formula = Residuals_FEve ~    Reef.Area + 
+  mod_dat <- brm (formula = Residuals_FEve ~  region +  Reef.Area + 
                     BO_damean_lonlat + 
                     Present.Surface.Salinity.Mean+
                     Present.Surface.Temperature.Mean+
                     decimalLatitude,
                   data = dat,
-                  prior= priors,
+                  #prior= priors,
                   family = gaussian (link="identity"),
                   chains=nc,
                   iter = ni,

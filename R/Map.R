@@ -38,6 +38,10 @@ plot_wrasses_FRic <- coords_fish %>%
   
   geom_point(aes(x=decimalLatitude,y=SR),col="cyan4",shape=17) + 
   geom_smooth(aes(x=decimalLatitude,y=SR),se=F,col="cyan4") + 
+  # islands
+  geom_point(data = coords_fish %>%
+               filter (Region == "oc_isl"),
+               aes(x=decimalLatitude,y=SR),col="black",shape=3,size=3) + 
 
   geom_point(aes(x=decimalLatitude,y=FRic/coeff),col="red4") + # Divide by 10 to get the same range than the temperature
   geom_smooth(aes(x=decimalLatitude,y=FRic/coeff),col="red4",se=F) + 
@@ -55,8 +59,9 @@ plot_wrasses_FRic <- coords_fish %>%
   theme(axis.title.y.right =  element_text(colour = "red4"),
         axis.text.y.right = element_text(colour = "red4"),
         axis.title.y.left =  element_text(colour = "cyan4"),
-        axis.text.y.left = element_text(colour = "cyan4"))
-
+        axis.text.y.left = element_text(colour = "cyan4")) + 
+  geom_vline(aes(xintercept= -18),linetype=3)
+  
 plot_wrasses_FRic
 
 # FEVE
@@ -66,6 +71,10 @@ plot_wrasses_FEve <- coords_fish %>%
   
   geom_point(aes(x=decimalLatitude,y=SR),col="cyan4",shape=17) + 
   geom_smooth(aes(x=decimalLatitude,y=SR),se=F,col="cyan4") + 
+  # islands
+  geom_point(data = coords_fish %>%
+               filter (Region == "oc_isl"),
+               aes(x=decimalLatitude,y=SR),col="black",shape=3,size=3) + 
 
   geom_point(aes(x=decimalLatitude,y=FEve/coeff),col="red4") + # Divide by 10 to get the same range than the temperature
   geom_smooth(aes(x=decimalLatitude,y=FEve/coeff),col="red4",se=F) + 
@@ -83,7 +92,8 @@ plot_wrasses_FEve <- coords_fish %>%
   theme(axis.title.y.right =  element_text(colour = "red4"),
         axis.text.y.right = element_text(colour = "red4"),
         axis.title.y.left =  element_text(colour = "cyan4"),
-        axis.text.y.left = element_text(colour = "cyan4"))
+        axis.text.y.left = element_text(colour = "cyan4"))+ 
+  geom_vline(aes(xintercept= -18),linetype=3)
 
 plot_wrasses_FEve
 
@@ -200,7 +210,11 @@ plot_grunts_FRic <- coords_fish_grunts %>%
   
   geom_point(aes(x=decimalLatitude,y=SR),col="cyan4",shape=17) + 
   geom_smooth(aes(x=decimalLatitude,y=SR),se=F,col="cyan4") + 
-
+  # islands
+  geom_point(data = coords_fish_grunts %>%
+               filter (Region == "oc_isl"),
+               aes(x=decimalLatitude,y=SR),col="black",shape=3,size=3) + 
+    
   geom_point(aes(x=decimalLatitude,y=FRic/coeff),col="red4") + # Divide by 10 to get the same range than the temperature
   geom_smooth(aes(x=decimalLatitude,y=FRic/coeff),col="red4",se=F) + 
 
@@ -217,7 +231,9 @@ plot_grunts_FRic <- coords_fish_grunts %>%
   theme(axis.title.y.right =  element_text(colour = "red4"),
         axis.text.y.right = element_text(colour = "red4"),
         axis.title.y.left =  element_text(colour = "cyan4"),
-        axis.text.y.left = element_text(colour = "cyan4"))
+        axis.text.y.left = element_text(colour = "cyan4"))+
+  geom_vline(aes(xintercept= -18),linetype=3)
+
 
 plot_grunts_FRic
 
@@ -228,6 +244,10 @@ plot_grunts_FEve <- coords_fish_grunts %>%
   
   geom_point(aes(x=decimalLatitude,y=SR),col="cyan4",shape=17) + 
   geom_smooth(aes(x=decimalLatitude,y=SR),se=F,col="cyan4") + 
+  # islands
+  geom_point(data = coords_fish_grunts %>%
+               filter (Region == "oc_isl"),
+               aes(x=decimalLatitude,y=SR),col="black",shape=3,size=3) + 
 
   geom_point(aes(x=decimalLatitude,y=FEve/coeff),col="red4") + # Divide by 10 to get the same range than the temperature
   geom_smooth(aes(x=decimalLatitude,y=FEve/coeff),col="red4",se=F) + 
@@ -245,7 +265,9 @@ plot_grunts_FEve <- coords_fish_grunts %>%
   theme(axis.title.y.right =  element_text(colour = "red4"),
         axis.text.y.right = element_text(colour = "red4"),
         axis.title.y.left =  element_text(colour = "cyan4"),
-        axis.text.y.left = element_text(colour = "cyan4"))
+        axis.text.y.left = element_text(colour = "cyan4"))+
+  geom_vline(aes(xintercept= -18),linetype=3)
+
 
 plot_grunts_FEve
 
@@ -368,7 +390,8 @@ plot_rodents_FRic <- spatial_effort_data_LF %>%
   theme(axis.title.y.right =  element_text(colour = "red4"),
         axis.text.y.right = element_text(colour = "red4"),
         axis.title.y.left =  element_text(colour = "cyan4"),
-        axis.text.y.left = element_text(colour = "cyan4"))
+        axis.text.y.left = element_text(colour = "cyan4"))+
+  geom_vline(aes(xintercept=-20),linetype=3)
 
 plot_rodents_FRic
 
@@ -399,7 +422,8 @@ plot_rodents_FEve <- spatial_effort_data_LF %>%
   theme(axis.title.y.right =  element_text(colour = "red4"),
         axis.text.y.right = element_text(colour = "red4"),
         axis.title.y.left =  element_text(colour = "cyan4"),
-        axis.text.y.left = element_text(colour = "cyan4"))
+        axis.text.y.left = element_text(colour = "cyan4"))+
+  geom_vline(aes(xintercept=-20),linetype=3)
 
 plot_rodents_FEve
 

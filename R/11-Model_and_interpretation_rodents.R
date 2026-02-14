@@ -14,7 +14,7 @@ load (here("Output", "simulated_FD_BM_rodents.RData"))
 load (here("Output", "simulated_FD_EB_rodents.RData"))
 load (here("Output", "simulated_FD_OU_rodents.RData"))
 load (here("Output", "empirical_FD_rodents.RData"))
-load (here("Output", "simulated_FD_random_rodents.RData"))
+#load (here("Output", "simulated_FD_random_rodents.RData"))
 
 # load R data
 load(here ( "Processed_data","image_rodents.RData"))
@@ -89,11 +89,11 @@ empirical_results <- data.frame (SR= apply(sapply(empirical_FD,"[[","nbsp"),1,me
                                  Effort =  (spatial_data$Sampling_effort))
 
 # random traits
-simulated_results_random <- data.frame (SR= apply(sapply(simulated_FD_random,"[[","nbsp"),1,mean),
-                                    FRic= apply(sapply(simulated_FD_random,"[[","FRic"),1,mean),
-                                    FEve=apply(sapply(simulated_FD_random,"[[","FEve"),1,mean),
-                                    Dataset= "SimulatedRandom",
-                                    Effort =  (spatial_data$Sampling_effort))
+#simulated_results_random <- data.frame (SR= apply(sapply(simulated_FD_random,"[[","nbsp"),1,mean),
+#                                    FRic= apply(sapply(simulated_FD_random,"[[","FRic"),1,mean),
+#                                    FEve=apply(sapply(simulated_FD_random,"[[","FEve"),1,mean),
+#                                    Dataset= "SimulatedRandom",
+#                                    Effort =  (spatial_data$Sampling_effort))
 
 # average of simulated values (brownian motion)
 simulated_results_BM <- data.frame (SR= apply(sapply(simulated_FD,"[[","nbsp"),1,mean),
@@ -119,17 +119,22 @@ simulated_results_OU <- data.frame (SR= apply(sapply(simulated_FD_OU,"[[","nbsp"
 
 # bind them
 df_analyzes <- rbind(empirical_results,
-                     simulated_results_random,
+                     #simulated_results_random,
                      simulated_results_BM,
                      simulated_results_EB,
                      simulated_results_OU)
+
+# st transfo
+spatial_data<-(st_transform(spatial_data,crs="EPSG:4326"))
 
 # add covariates
 df_analyzes <- cbind(df_analyzes,
       elevation = scale(spatial_data$elevation),
       slope = scale(spatial_data$slope),
       forest = scale(spatial_data$forest),
-      latitude = scale(st_coordinates(spatial_data)[,"Y"])
+      latitude = scale(st_coordinates(spatial_data)[,"Y"]),
+      #lat = st_coordinates(spatial_data)[,"Y"],
+      region = ifelse (st_coordinates(spatial_data)[,"Y"] < -20, "south","north")
 )
 
 # RM sites with elevation == NA (Cerrado sites)
@@ -198,7 +203,7 @@ loo_compare(model.ancova.FRic,
             model.ancova.FRic_sq)
 
 # plotting
-p1<-plot(conditional_effects(model.ancova.FRic,
+p1<-plot(conditional_effects(model.ancova.FRic_sq,
                              method="posterior_epred",
                              re_formula=NA,
                              robust=T,
@@ -215,8 +220,8 @@ p1<-plot(conditional_effects(model.ancova.FRic,
          point_args = list (width = 0.25,alpha=0.3)) [[1]] + 
   
   
-  scale_color_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3", "red4")) + 
-  scale_fill_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3", "red4")) + 
+  scale_color_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
+  scale_fill_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
   
   
   xlab("Species richness (ln)") + 
@@ -237,7 +242,7 @@ mod_dat <- lapply (unique(df_analyzes$Dataset)[1:2], function (i) {
   # fit the model
   dat <- df_analyzes [which(df_analyzes$Dataset == i),]
   # do LM
-  mod_dat <- brm (formula = Residuals_FRic ~  elevation + slope + forest + latitude, 
+  mod_dat <- brm (formula = Residuals_FRic ~ region + elevation + slope + forest + latitude, 
                  data = dat,
                   family = gaussian (link="identity"),
                   chains=nc,
@@ -254,7 +259,7 @@ tab_model(mod_dat[[2]])
 
 # Functional  Evenness models ----------------------------------
 #terms(model.ancova.FRic)
-priors<-c(set_prior("normal(0,5)",class = "sigma"))
+#priors<-c(set_prior("normal(0,5)",class = "sigma"))
 
 # run model (ancova)
 model.ancova.FEve <- brm (brmsformula(logFEve ~ (logSR*Dataset)+logEffort,
@@ -297,7 +302,7 @@ loo_compare(model.ancova.FEve,
             model.ancova.FEve_sq)
 
 # plotting
-p2<-plot(conditional_effects(model.ancova.FEve,
+p2<-plot(conditional_effects(model.ancova.FEve_sq,
                              method="posterior_epred",  # posterior_predict
                              re_formula=NA,
                              robust=T,
@@ -313,8 +318,8 @@ p2<-plot(conditional_effects(model.ancova.FEve,
          points=T,
          point_args = list (width = 0.25,alpha=0.3)) [[1]] + 
   
-  scale_color_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3", "red4")) + 
-  scale_fill_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3", "red4")) + 
+  scale_color_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
+  scale_fill_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
   
   xlab("Species richness (ln)") + 
   
@@ -331,10 +336,10 @@ pdf(here("Output","Figures","Fig3_SM.pdf"), width=9,height=5)
 dev.off()
 
 # compare slopes (in main Ancova)
-(m.lst.FEve <- emmeans::emtrends (model.ancova.FEve, "Dataset", var="logSR"))
+(m.lst.FEve <- emmeans::emtrends (model.ancova.FEve_sq, "Dataset", var="logSR"))
 
 # Analyse residuals in function of covariates
-df_analyzes$Residuals_FEve <- residuals(model.ancova.FEve)[,"Estimate"]
+df_analyzes$Residuals_FEve <- residuals(model.ancova.FEve_sq)[,"Estimate"]
 
 # run one LM per data set
 mod_dat_FEve <- lapply (unique(df_analyzes$Dataset)[1:2], function (i) {
@@ -342,7 +347,7 @@ mod_dat_FEve <- lapply (unique(df_analyzes$Dataset)[1:2], function (i) {
   # fit the model
   dat <- df_analyzes [which(df_analyzes$Dataset == i),]
   # do LM
-  mod_dat <- brm ( formula = Residuals_FEve ~  elevation + slope + forest  + latitude, 
+  mod_dat <- brm ( formula = Residuals_FEve ~ region + elevation + slope + forest  + latitude, 
                  data = dat,
                   prior= priors,
                   family = gaussian (link="identity"),
@@ -363,7 +368,6 @@ tab_model(mod_dat_FEve[[2]])
 save (model.ancova.FRic,
       model.ancova.FRic_sq,
       m.lst.FRic,
-      m.lst_tab.FRic,
       model.ancova.FEve,
       model.ancova.FEve_sq,
       m.lst.FEve,
