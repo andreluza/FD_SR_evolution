@@ -1,0 +1,48 @@
+---
+title: "Could evolution explain differences in functional richness and evenness along species richness gradients? A formal test using multivariate trait simulations"
+author: 
+date: "2026-02-20"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+#### Organization of the repository:\
+
+*Root*\
+|\
+|-- *data_fish*: data of reef fishes from Morais et al. 2017 - file "UpdatedData_RMorais_et_al_2017.csv".\ 
+|-------- The folder 'TACT' hosts the fish phylogenies (from Siqueira et al. 2020), file "Reef_fish_all_combined.trees".\
+|-------- The file "Atributos_especies_Atlantico_&_Pacifico_Oriental_2020_04_28.csv" has trait data from Quimbayo et al. 2021.\
+|-- *data rodents*:\
+|-------- "AppendixS1- Small_mammal_data.csv" = data from Luza et al. 2019. "Mammal_Communities.csv" = data from Figueiredo et al. 2017 ("Localities.csv" and "References.csv" are metadata associated to data of Figueiredo et al. 2017).\
+|-------- "limites_integradores_wgs84_v1_2_0" folder with Atlantic forest shapefiles Muylaert et al. 2018.\
+|-------- "Penone_et_al_2016_mammal_trait_data_imputed.csv" = mammal trait data from Penone et al. 2016.\
+|-------- "Sigmodontinae_413species100Trees.trees" = rodent phylogenies from Upham et al. 2016.\
+|-- *Processed data*\
+|-------- Basic data to fit models ("image*.RData") for each group. Data of environmental and historical covariates after extraction to survey sites are available in this folder.\
+|-- *Output*: files in format 'RData' with parameters of macroevolutionary models fitted to the data (sufix 'simulated*.RData') and Bayesian linear models fitted to FRic and FEve data (sufix "GLM").\
+|-------- Figures: folder with figures shown in the main text and supporting information.\
+|-- *R*: R scripts used in the analyzes. The codes are numbered from 1 to 15, depicting different steps of analysis.\
+
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+#### This paper was produced using the following software and associated packages:\
+
+```{r pressure, echo=F,warning=F,message=F}
+
+source("R/packages.R")
+sessionInfo()
+
+
+```
