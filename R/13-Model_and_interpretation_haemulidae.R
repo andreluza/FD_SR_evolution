@@ -208,34 +208,6 @@ loo_compare(model.ancova.FRic,
 pp_check(model.ancova.FRic_sq,ndraws = 100)
 pp_check(model.ancova.FRic,ndraws = 100)
 
-# plotting
-p1<-plot(conditional_effects(model.ancova.FRic_sq,
-                             method="posterior_epred",
-                             re_formula=NA,
-                             robust=T,
-                             effects = "logSR:Dataset",
-                             points=T,
-                             prob = 0.95),
-         
-         theme = theme_classic() +
-           
-           theme (axis.title = element_text(size=15),
-                  axis.text = element_text(size=12),
-                  legend.position = c(0.75,0.3)) ,
-         points=T,
-         point_args = list (width = 0.25,alpha=0.3)) [[1]]  + 
-  
-  
-  scale_color_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
-  scale_fill_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
-  
-  
-  xlab("Species richness gradient") + 
-  
-  ylab ("Functional Richness (FRic)")
-
-p1
-
 # compare slopes
 m.lst.FRic <- emtrends (model.ancova.FRic_sq, "Dataset", var="logSR")
 m.lst_tab.FRic <- summary(m.lst.FRic,point.est = mean)
@@ -311,37 +283,6 @@ loo_compare(model.ancova.FEve,
             model.ancova.FEve_sq)
 
 pp_check(model.ancova.FEve,ndraws = 100)
-
-# plotting
-p2<-plot(conditional_effects(model.ancova.FEve,
-                             method="posterior_epred",
-                             re_formula=NA,
-                             robust=T,
-                             effects = "logSR:Dataset",
-                             points=T,
-                             prob = 0.95),
-         
-         theme = theme_classic() +
-           
-           theme (axis.title = element_text(size=15),
-                  axis.text = element_text(size=12),
-                  legend.position = "none") ,
-         points=T,
-         point_args = list (width = 0.25,alpha=0.3)) [[1]]  + 
-  
-  scale_color_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
-  scale_fill_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
-  
-  xlab("Species richness gradient") + 
-  
-  ylab ("Functional Evenness (FEve)")
-
-p2
-
-# organize plots
-pdf(here("Output","Figures","Fig3_haemulidae.pdf"), width=9,height=5)
-  grid.arrange(p1,p2,nrow=1)
-dev.off()
 
 # compare slopes
 m.lst.FEve <- emtrends (model.ancova.FEve, "Dataset", var="logSR")

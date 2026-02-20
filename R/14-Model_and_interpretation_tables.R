@@ -1,8 +1,8 @@
 
 # ---------------------------------------------
 
-# Run Models : Relationship between functional richness and evenness, considering also traits produced by the three models of evolution
-# Haemulidae
+# Interpret fitted relationships
+# Fig. ridge plots
 
 # ----------------------------------------------
 rm(list=ls())
@@ -22,6 +22,260 @@ env_rodents <- new.env()
 load (file=here("Output", "GLM_test_haemulidae.RData"),envir = env_haemulidae)
 load (file=here("Output", "GLM_test_labridae.RData"),envir = env_labridae)
 load (file=here("Output", "GLM_test_rodents.RData"),envir = env_rodents)
+
+# Predictions empirical
+beta0 = fixef(env_rodents$model.ancova.FRic_sq)[1,1]
+beta1= fixef(env_rodents$model.ancova.FRic_sq)[3,1]
+beta2= fixef(env_rodents$model.ancova.FRic_sq)[4,1]
+S1=log(5)
+S2=log(6)
+
+# difference
+exp(beta0 + (beta1*S2)+(beta2*(S2)^2)) - exp(beta0 + (beta1*S1)+(beta2*(S1)^2)) 
+
+# brownian motion
+beta0 = fixef(env_rodents$model.ancova.FRic_sq)[1,1]+fixef(env_rodents$model.ancova.FRic_sq)[5,1]
+beta1= fixef(env_rodents$model.ancova.FRic_sq)[3,1]+fixef(env_rodents$model.ancova.FRic_sq)[9,1]
+beta2= fixef(env_rodents$model.ancova.FRic_sq)[4,1]+fixef(env_rodents$model.ancova.FRic_sq)[12,1]
+
+# difference
+exp(beta0 + (beta1*S2)+(beta2*(S2)^2)) - exp(beta0 + (beta1*S1)+(beta2*(S1)^2)) 
+
+# EB
+beta0 = fixef(env_rodents$model.ancova.FRic_sq)[1,1]+fixef(env_rodents$model.ancova.FRic_sq)[6,1]
+beta1= fixef(env_rodents$model.ancova.FRic_sq)[3,1]+fixef(env_rodents$model.ancova.FRic_sq)[10,1]
+beta2= fixef(env_rodents$model.ancova.FRic_sq)[4,1]+fixef(env_rodents$model.ancova.FRic_sq)[13,1]
+
+
+# difference
+exp(beta0 + (beta1*S2)+(beta2*(S2)^2)) - exp(beta0 + (beta1*S1)+(beta2*(S1)^2)) 
+
+# OU
+beta0 = fixef(env_rodents$model.ancova.FRic_sq)[1,1]+fixef(env_rodents$model.ancova.FRic_sq)[7,1]
+beta1= fixef(env_rodents$model.ancova.FRic_sq)[3,1]+fixef(env_rodents$model.ancova.FRic_sq)[11,1]
+beta2= fixef(env_rodents$model.ancova.FRic_sq)[4,1]+fixef(env_rodents$model.ancova.FRic_sq)[14,1]
+
+# difference
+exp(beta0 + (beta1*S2)+(beta2*(S2)^2)) - exp(beta0 + (beta1*S1)+(beta2*(S1)^2)) 
+
+# Labridae
+# Predictions empirical
+beta0 = fixef(env_labridae$model.ancova.FRic_sq)[1,1]
+beta1= fixef(env_labridae$model.ancova.FRic_sq)[3,1]
+beta2= fixef(env_labridae$model.ancova.FRic_sq)[4,1]
+S1=log(10)
+S2=log(11)
+
+# difference
+exp(beta0 + (beta1*S2)+(beta2*(S2)^2)) - exp(beta0 + (beta1*S1)+(beta2*(S1)^2)) 
+
+# brownian motion
+beta0 = fixef(env_labridae$model.ancova.FRic_sq)[1,1]+fixef(env_labridae$model.ancova.FRic_sq)[5,1]
+beta1= fixef(env_labridae$model.ancova.FRic_sq)[3,1]+fixef(env_labridae$model.ancova.FRic_sq)[9,1]
+beta2= fixef(env_labridae$model.ancova.FRic_sq)[4,1]+fixef(env_labridae$model.ancova.FRic_sq)[12,1]
+
+# difference
+exp(beta0 + (beta1*S2)+(beta2*(S2)^2)) - exp(beta0 + (beta1*S1)+(beta2*(S1)^2)) 
+
+# EB
+beta0 = fixef(env_labridae$model.ancova.FRic_sq)[1,1]+fixef(env_labridae$model.ancova.FRic_sq)[6,1]
+beta1= fixef(env_labridae$model.ancova.FRic_sq)[3,1]+fixef(env_labridae$model.ancova.FRic_sq)[10,1]
+beta2= fixef(env_labridae$model.ancova.FRic_sq)[4,1]+fixef(env_labridae$model.ancova.FRic_sq)[13,1]
+
+# difference
+exp(beta0 + (beta1*S2)+(beta2*(S2)^2)) - exp(beta0 + (beta1*S1)+(beta2*(S1)^2)) 
+
+# OU
+beta0 = fixef(env_labridae$model.ancova.FRic_sq)[1,1]+fixef(env_labridae$model.ancova.FRic_sq)[7,1]
+beta1= fixef(env_labridae$model.ancova.FRic_sq)[3,1]+fixef(env_labridae$model.ancova.FRic_sq)[11,1]
+beta2= fixef(env_labridae$model.ancova.FRic_sq)[4,1]+fixef(env_labridae$model.ancova.FRic_sq)[14,1]
+
+# difference
+exp(beta0 + (beta1*S2)+(beta2*(S2)^2)) - exp(beta0 + (beta1*S1)+(beta2*(S1)^2)) 
+
+
+# plotting
+p1<-plot(conditional_effects(env_rodents$model.ancova.FRic_sq,
+                             method="posterior_epred",
+                             re_formula=NA,
+                             robust=T,
+                             effects = "logSR:Dataset",
+                             points=T,
+                             prob = 0.95),
+         
+         theme = theme_classic() +
+           
+           theme (axis.title = element_text(size=15),
+                  axis.text = element_text(size=12),
+                  legend.position = c(0.75,0.3)) ,
+         points=T,
+         point_args = list (width = 0.025,alpha=0.3)) [[1]]  + 
+  
+  
+  scale_color_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
+  scale_fill_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
+  
+  
+  xlab("Species richness (ln)") + 
+  
+  ylab ("Functional Richness (ln)")
+
+p1
+
+
+# plotting
+p2<-plot(conditional_effects(env_rodents$model.ancova.FEve,
+                             method="posterior_epred",
+                             re_formula=NA,
+                             robust=T,
+                             effects = "logSR:Dataset",
+                             points=T,
+                             prob = 0.95),
+         
+         theme = theme_classic() +
+           
+           theme (axis.title = element_text(size=15),
+                  axis.text = element_text(size=12),
+                  legend.position = "none") ,
+         points=T,
+         point_args = list (width = 0.025,alpha=0.3)) [[1]]  + 
+  
+  scale_color_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
+  scale_fill_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
+  
+  xlab("Species richness (ln)") + 
+  
+  ylab ("Functional Evenness (ln)")
+
+p2
+
+# organize plots
+pdf(here("Output","Figures","Fig3_rodents.pdf"), width=9,height=5)
+  grid.arrange(p1,p2,nrow=1)
+dev.off()
+
+# plotting
+p1<-plot(conditional_effects(env_labridae$model.ancova.FRic_sq,
+                             method="posterior_epred",
+                             re_formula=NA,
+                             robust=T,
+                             effects = "logSR:Dataset",
+                             points=T,
+                             prob = 0.95),
+         
+         theme = theme_classic() +
+           
+           theme (axis.title = element_text(size=15),
+                  axis.text = element_text(size=12),
+                  legend.position = c(0.75,0.3)) ,
+         points=T,
+         point_args = list (width = 0.025,alpha=0.3)) [[1]]  + 
+  
+  
+  scale_color_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
+  scale_fill_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
+  
+  
+  xlab("Species richness (ln)") + 
+  
+  ylab ("Functional Richness (ln)")
+
+p1
+
+
+# plotting
+p2<-plot(conditional_effects(env_labridae$model.ancova.FEve,
+                             method="posterior_epred",
+                             re_formula=NA,
+                             robust=T,
+                             effects = "logSR:Dataset",
+                             points=T,
+                             prob = 0.95),
+         
+         theme = theme_classic() +
+           
+           theme (axis.title = element_text(size=15),
+                  axis.text = element_text(size=12),
+                  legend.position = "none") ,
+         points=T,
+         point_args = list (width = 0.025,alpha=0.3)) [[1]]  + 
+  
+  scale_color_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
+  scale_fill_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
+  
+  xlab("Species richness (ln)") + 
+  
+  ylab ("Functional Evenness (ln)")
+
+p2
+
+# organize plots
+pdf(here("Output","Figures","Fig3_wrasses.pdf"), width=9,height=5)
+  grid.arrange(p1,p2,nrow=1)
+dev.off()
+
+
+# plotting
+p1<-plot(conditional_effects(env_haemulidae$model.ancova.FRic_sq,
+                             method="posterior_epred",
+                             re_formula=NA,
+                             robust=T,
+                             effects = "logSR:Dataset",
+                             points=T,
+                             prob = 0.95),
+         
+         theme = theme_classic() +
+           
+           theme (axis.title = element_text(size=15),
+                  axis.text = element_text(size=12),
+                  legend.position = c(0.75,0.3)) ,
+         points=T,
+         point_args = list (width = 0.025,alpha=0.3)) [[1]]  + 
+  
+  
+  scale_color_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
+  scale_fill_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
+  
+  
+  xlab("Species richness (ln)") + 
+  
+  ylab ("Functional Richness (ln)")
+
+p1
+
+
+# plotting
+p2<-plot(conditional_effects(env_haemulidae$model.ancova.FEve,
+                             method="posterior_epred",
+                             re_formula=NA,
+                             robust=T,
+                             effects = "logSR:Dataset",
+                             points=T,
+                             prob = 0.95),
+         
+         theme = theme_classic() +
+           
+           theme (axis.title = element_text(size=15),
+                  axis.text = element_text(size=12),
+                  legend.position = "none") ,
+         points=T,
+         point_args = list (width = 0.025,alpha=0.3)) [[1]]  + 
+  
+  scale_color_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
+  scale_fill_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
+  
+  xlab("Species richness (ln)") + 
+  
+  ylab ("Functional Evenness (ln)")
+
+p2
+
+# organize plots
+pdf(here("Output","Figures","Fig3_grunts.pdf"), width=9,height=5)
+  grid.arrange(p1,p2,nrow=1)
+dev.off()
+
+
 
 # compare models
 # Haemulidae
@@ -333,10 +587,15 @@ dat_FD %>%
   ggplot2::scale_colour_manual(values=levels(dat_FD$col_ridges))+
   scale_y_discrete(labels=parse_format())+
   facet_grid(Taxon~Metric,scales="free_x")+
-  geom_density_ridges(quantile_lines=TRUE,
-                      quantile_fun=function(x,...)mean(x),
-                      rel_min_height = 0.005,
-                      alpha=0.5)+
+  #geom_density_ridges(quantile_lines=TRUE,
+  #                    quantile_fun=function(x,...)mean(x),
+  #                    rel_min_height = 0.005,
+  #                    alpha=0.5)+
+  
+    stat_density_ridges(quantile_lines = TRUE,quantiles = c(0.025,0.2, 0.5, 0.8,0.975),
+                        rel_min_height = 0.005,
+                        alpha=0.5)+
+  
   theme_bw(base_size = 14) +
   geom_vline(aes(xintercept=0),linetype=3)+
   theme(legend.position = "none")
@@ -505,7 +764,7 @@ res_FRic %>%
   #                    quantile_fun=function(x,...)mean(x),
   #                    rel_min_height = 0.005,
   #                    alpha=0.5)+
-  stat_density_ridges(quantile_lines = TRUE,quantiles = c(0.025,0.5, 0.975),
+  stat_density_ridges(quantile_lines = TRUE,quantiles = c(0.025,0.2,0.5, 0.8,0.975),
                         rel_min_height = 0.005)+
 
   theme_bw(base_size = 14) +
@@ -673,7 +932,7 @@ res_FEve %>%
   #scale_y_discrete(labels=parse_format())+
   facet_grid(Taxon~facet+Data,scales="free_y")+
 
-    stat_density_ridges(quantile_lines = TRUE,quantiles = c(0.025,0.5, 0.975),
+    stat_density_ridges(quantile_lines = TRUE,quantiles = c(0.025,0.2,0.5, 0.8,0.975),
                         rel_min_height = 0.005)+
 #geom_density_ridges(quantile_lines=TRUE,
 #                      quantile_fun=function(x,...)mean(x),
