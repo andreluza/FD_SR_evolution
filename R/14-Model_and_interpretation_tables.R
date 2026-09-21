@@ -93,7 +93,6 @@ beta2= fixef(env_labridae$model.ancova.FRic_sq)[4,1]+fixef(env_labridae$model.an
 # difference
 exp(beta0 + (beta1*S2)+(beta2*(S2)^2)) - exp(beta0 + (beta1*S1)+(beta2*(S1)^2)) 
 
-
 # plotting
 p1<-plot(conditional_effects(env_rodents$model.ancova.FRic_sq,
                              method="posterior_epred",
@@ -580,8 +579,8 @@ dat_FD$col_lab [is.na(dat_FD$col_lab)]<-2
 
 dat_FD %>%
   ggplot(aes(x=Estimate,y=Coefficient,fill=(col_ridges),col=(col_ridges))) +
-  #geom_rect(aes(xmin=-6,xmax=3,ymin=1.5,ymax=5.5),fill="gray90",alpha=0.1) +
-  #geom_rect(aes(xmin=-6,xmax=3,ymin=7.5,ymax=11.5),fill="gray90",alpha=0.1) +
+  geom_rect(aes(xmin=-Inf,xmax=Inf,ymin=2.5,ymax=3.5),fill="gray90",col="gray90", alpha=0.1) +
+  geom_rect(aes(xmin=-Inf,xmax=Inf,ymin=6.5,ymax=9.5),fill="gray90",col="gray90",alpha=0.1) +
   #geom_pointrange(aes(x=Estimate,y=Coefficient,xmin=Q2.5,xmax=Q97.5))+
   ggplot2::scale_fill_manual(values=levels(dat_FD$col_ridges))+
   ggplot2::scale_colour_manual(values=levels(dat_FD$col_ridges))+
@@ -771,7 +770,7 @@ res_FRic %>%
   geom_vline(aes(xintercept=0),linetype=3)+
   theme(legend.position = "none")
 
-ggsave(here("Output","Figures","FigS5.png"), width=7,height=7)
+ggsave(here("Output","Figures","Fig5.png"), width=7,height=7)
 
 
 # FEve------------------------------------------------------------------

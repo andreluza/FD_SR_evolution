@@ -26,7 +26,7 @@ load (here("Output", "simulated_FD_BM_haemulidae.RData"))
 load (here("Output", "simulated_FD_EB_haemulidae.RData"))
 load (here("Output", "simulated_FD_OU_haemulidae.RData"))
 load (here("Output", "empirical_FD_haemulidae.RData"))
-load (here("Output", "simulated_FD_random_haemulidae.RData"))
+#load (here("Output", "simulated_FD_random_haemulidae.RData"))
 
 # load R data
 load(here ( "Processed_data","image_haemulidae.RData"))
@@ -82,6 +82,29 @@ fig_params_fish <-  ggplot(df_params,
          axis.text.x = element_text(size=7))
 fig_params_fish
 ggsave(here("Output", "Figures", "parameter_estimates_haemulidae.png"))
+
+# comparison of support of models
+comp_mod <- lapply (seq(1,length(simul_param_BM)), function (i)
+  
+  melt(data.frame(BM=unlist(lapply (simul_param_BM[[i]], AIC)),
+        EB=unlist(lapply (simul_param_EB[[i]], AIC)),
+        OU=unlist(lapply (simul_param_OU[[i]], AIC)),
+        Traits = names(simul_param_OU[[i]]))
+  )
+)
+comp_mod <- do.call(rbind,comp_mod)
+require(dplyr)
+(comp_mod %>%
+  group_by(Traits, variable) %>%
+  reframe (AIC = mean(value),
+           lci = min(value),
+           uci = max(value))) %>%
+  ggplot(aes(y = variable, x = AIC))+
+  geom_pointrange(aes(y = variable, x = AIC,xmin=lci,xmax=uci))+
+  facet_wrap(~Traits, scales="free_x")+
+  theme_bw()
+ggsave(here("Output", "Figures", "evmodel_comp_haemulidae.png"))
+
 
 
 # =-----------------------------------------------------------------

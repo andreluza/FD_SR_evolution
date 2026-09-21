@@ -78,29 +78,45 @@ fig_params_rodents <- ggplot(df_params,
 fig_params_rodents
 ggsave(here("Output", "Figures", "parameter_estimates_rodents.png"))
 
+# comparison of support of models
+comp_mod <- lapply (seq(1,length(simul_param_BM)), function (i)
+  
+  melt(data.frame(BM=unlist(lapply (simul_param_BM[[i]], AIC)),
+        EB=unlist(lapply (simul_param_EB[[i]], AIC)),
+        OU=unlist(lapply (simul_param_OU[[i]], AIC)),
+        Traits = names(simul_param_OU[[i]]))
+  )
+)
+comp_mod <- do.call(rbind,comp_mod)
+require(dplyr)
+(comp_mod %>%
+  group_by(Traits, variable) %>%
+  reframe (AIC = mean(value),
+           lci = min(value),
+           uci = max(value))) %>%
+  ggplot(aes(y = variable, x = AIC))+
+  geom_pointrange(aes(y = variable, x = AIC,xmin=lci,xmax=uci))+
+  facet_wrap(~Traits, scales="free_x")+
+  theme_bw()
+ggsave(here("Output", "Figures", "evmodel_comp_rodents.png"))
+
 
 # ----------------------------------------------------------------
 
 # empirical results
 empirical_results <- data.frame (SR= apply(sapply(empirical_FD,"[[","nbsp"),1,mean),
                                  FRic= apply(sapply(empirical_FD,"[[","FRic"),1,mean),
-                                 FEve=apply(sapply(empirical_FD,"[[","FEve"),1,mean),
+                                 FEve= apply(sapply(empirical_FD,"[[","FEve"),1,mean),
                                  Dataset= "Empirical",
-                                 Effort =  (spatial_data$Sampling_effort))
-
-# random traits
-#simulated_results_random <- data.frame (SR= apply(sapply(simulated_FD_random,"[[","nbsp"),1,mean),
-#                                    FRic= apply(sapply(simulated_FD_random,"[[","FRic"),1,mean),
-#                                    FEve=apply(sapply(simulated_FD_random,"[[","FEve"),1,mean),
-#                                    Dataset= "SimulatedRandom",
-#                                    Effort =  (spatial_data$Sampling_effort))
+                                 Effort =  (spatial_effort_data_LF$Sampling_effort))
+rownames(spatial_effort_data_LF) == names(apply(sapply(empirical_FD,"[[","nbsp"),1,mean))
 
 # average of simulated values (brownian motion)
 simulated_results_BM <- data.frame (SR= apply(sapply(simulated_FD,"[[","nbsp"),1,mean),
                                     FRic= apply(sapply(simulated_FD,"[[","FRic"),1,mean),
                                     FEve=apply(sapply(simulated_FD,"[[","FEve"),1,mean),
                                     Dataset= "SimulatedBM",
-                                    Effort =  (spatial_data$Sampling_effort))
+                                    Effort =  (spatial_effort_data_LF$Sampling_effort))
 
 
 # average of simulated values by EB
@@ -108,14 +124,14 @@ simulated_results_EB <- data.frame (SR= apply(sapply(simulated_FD_EB,"[[","nbsp"
                                     FRic= apply(sapply(simulated_FD_EB,"[[","FRic"),1,mean),
                                     FEve=apply(sapply(simulated_FD_EB,"[[","FEve"),1,mean),
                                     Dataset = "SimulatedEB",
-                                    Effort =  (spatial_data$Sampling_effort))
+                                    Effort =  (spatial_effort_data_LF$Sampling_effort))
 
 # average of simulated values by OU
 simulated_results_OU <- data.frame (SR= apply(sapply(simulated_FD_OU,"[[","nbsp"),1,mean),
                                     FRic= apply(sapply(simulated_FD_OU,"[[","FRic"),1,mean),
                                     FEve=apply(sapply(simulated_FD_OU,"[[","FEve"),1,mean),
                                     Dataset = "SimulatedOU",
-                                    Effort =  (spatial_data$Sampling_effort))
+                                    Effort =  (spatial_effort_data_LF$Sampling_effort))
 
 # bind them
 df_analyzes <- rbind(empirical_results,
@@ -201,7 +217,6 @@ model.ancova.FRic_sq <- add_criterion(model.ancova.FRic_sq, "loo", moment_match=
 # compare
 loo_compare(model.ancova.FRic, 
             model.ancova.FRic_sq)
-
 
 # compare slopes (in main Ancova)
 (m.lst.FRic <- emmeans::emtrends (model.ancova.FRic, "Dataset", var="logSR"))
