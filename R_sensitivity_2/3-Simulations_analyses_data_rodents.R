@@ -37,47 +37,6 @@ empirical_FD <- lapply(match_comm_data, function (i)
 save (empirical_FD,
       file= here("Output_sensitivity_2", "empirical_FD_rodents.RData"))
 
-# -------------------------------------
-
-# Random traits
-
-r_traits <- match_data$UNTITLED$data
-r_traits_sim <- lapply (seq(1,length(match_data)), function (i) {
-  
-  # matrix traits
-  matrix_traits  <- apply (r_traits,2, function (x) {
-  
-            rnorm(nrow(r_traits),0,1)
-  
-  })
-  dimnames(matrix_traits) <- dimnames(r_traits)
-  matrix_traits
-  
-  }
-)
-
-# simulated FD
-# run across simulations
-simulated_FD_random <- lapply (seq (1,length (match_comm_data)), function (i)
-  
-                dbFD(x=r_traits_sim[[i]][which(rownames(r_traits_sim[[i]]) %in% colnames(match_comm_data[[i]]$comm)),],
-                     a=data.matrix(match_comm_data[[i]]$comm),
-                     w.abun=T,
-                     stand.x=F,
-                     calc.FRic = T,
-                     stand.FRic = T,
-                     m = "max",
-                     corr = "lingoes",
-                     calc.CWM = F,
-                     calc.FDiv=F,
-                     print.pco = T)
-  
-)
-
-# save
-save (simulated_FD_random,
-      file= here("Output_sensitivity_2", "simulated_FD_random_rodents.RData"))
-
 
 # -------------------------------------------------------------------
 ## Simulate trait evolution according to a bivariate "BMM" model

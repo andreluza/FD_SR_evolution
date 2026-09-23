@@ -371,63 +371,6 @@ save (simul_param_OU,
       file= here("Output", "simulated_FD_OU_labridae.RData"))
 
 
-# -----------------------------------
-# simulate multiple optimum OU to compare with a single optimum OU
-
-## make analysis input data.frame
-regime <- match_data[[1]]$data$Body_size
-regime <- cut(regime, breaks = c(-1,-0.5, 0.5,6))
-
-
-data<-data.frame(Genus_species=rownames(match_data[[1]]$data),
-                 Reg=as.factor (regime),
-                 Body_size = match_data[[1]]$data$Body_size)
-
-
-
-require("OUwie")
-fitOU<-OUwie(match_data[[1]]$phy,
-             data,
-             model="OUM",
-             simmap.tree = F,
-             algorithm="invert")
-
-
-
-data(tworegime)
-
-#Plot the tree and the internal nodes to highlight the selective regimes:
-select.reg<-character(length(tree$node.label))
-select.reg[tree$node.label == 1] <- "black"
-select.reg[tree$node.label == 2] <- "red"
-plot(tree)
-nodelabels(pch=21, bg=select.reg)
-
-
-
-## Not run: 
-#To see the first 5 lines of the data matrix to see what how to
-#structure the data:
-trait[1:5,]
-
-#Now fit an OU model that allows different sigma^2:
-OUwie(tree,trait,model=c("OUMV"))
-
-
-# ------------------------------
-# OU
-# estimating parameters
-simul_param_MOU <- lapply (match_data, function (i) 
-  
-  fitContinuous(phy=i$phy,  
-                dat = (i$data), 
-                model="OUM", 
-                SE=NA)
-  
-  )
-# ancestral states for each trait
-theta<-rep(0,ntraits)
-
 rm(list=ls())
 # -----------------------------------------------------
 # end

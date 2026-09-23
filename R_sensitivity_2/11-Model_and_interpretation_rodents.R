@@ -14,7 +14,6 @@ load (here("Output_sensitivity_2", "simulated_FD_BM_rodents.RData"))
 load (here("Output_sensitivity_2", "simulated_FD_EB_rodents.RData"))
 load (here("Output_sensitivity_2", "simulated_FD_OU_rodents.RData"))
 load (here("Output_sensitivity_2", "empirical_FD_rodents.RData"))
-#load (here("Output", "simulated_FD_random_rodents.RData"))
 
 # load R data
 load(here ( "Processed_data_sensitivity_2","image_rodents.RData"))
@@ -110,13 +109,6 @@ empirical_results <- data.frame (SR= apply(sapply(empirical_FD,"[[","nbsp"),1,me
                                  Dataset= "Empirical",
                                  Effort =  (spatial_data$Sampling_effort))
 
-# random traits
-#simulated_results_random <- data.frame (SR= apply(sapply(simulated_FD_random,"[[","nbsp"),1,mean),
-#                                    FRic= apply(sapply(simulated_FD_random,"[[","FRic"),1,mean),
-#                                    FEve=apply(sapply(simulated_FD_random,"[[","FEve"),1,mean),
-#                                    Dataset= "SimulatedRandom",
-#                                    Effort =  (spatial_data$Sampling_effort))
-
 # average of simulated values (brownian motion)
 simulated_results_BM <- data.frame (SR= apply(sapply(simulated_FD,"[[","nbsp"),1,mean),
                                     FRic= apply(sapply(simulated_FD,"[[","FRic"),1,mean),
@@ -141,7 +133,6 @@ simulated_results_OU <- data.frame (SR= apply(sapply(simulated_FD_OU,"[[","nbsp"
 
 # bind them
 df_analyzes <- rbind(empirical_results,
-                     #simulated_results_random,
                      simulated_results_BM,
                      simulated_results_EB,
                      simulated_results_OU)
