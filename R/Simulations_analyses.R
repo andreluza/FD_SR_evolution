@@ -11,14 +11,214 @@ source("R/packages.R")
 # load data
 # load phylogenies
 #fishtree_complete_phylogeny()
-tree<- fishtree_complete_phylogeny()
+tree<- read.tree (here ("data","TACT","Reef_fish_all_combined.trees"))#fishtree_complete_phylogeny()
+
+# dataframe with taxa name
+df_taxa <-data.frame (sp = (unique(tree[[1]]$tip.label[order(tree[[1]]$tip.label)])))
+df_taxa$sp <- gsub ("_", " ", df_taxa$sp)
+
+# worms's validation
+worms_record_fish <- lapply (df_taxa$sp, function (i) 
+  
+  tryCatch (
+    
+    wm_records_taxamatch(i, fuzzy = TRUE, marine_only = TRUE)[[1]],
+    
+    error = function (e) print(NA)
+    
+    
+  )
+  
+)
+
+names (worms_record_fish) <- df_taxa$sp
+test_taxa <- lapply (worms_record_fish,data.frame)
+test_taxa <- test_taxa[unlist(lapply(test_taxa,nrow))>=1]
+test_taxa <- test_taxa[unlist(lapply(test_taxa,ncol))>1]
+test_taxa<-do.call(rbind,test_taxa)
+
+# match with the table
+df_taxa$sp_worms <- (test_taxa[match (df_taxa$sp,rownames(test_taxa)),"scientificname"])
+
+# if missing, keep the previous name
+df_taxa$names_sp <-  ifelse (is.na(df_taxa$sp_worms),
+        df_taxa$sp,
+        df_taxa$sp_worms)
+
+
+# filter labridae
+df_taxa <- df_taxa[which(df_taxa$family == "Labridae"),]
+
+# alter taxon names in the phlogeny
+table(gsub (" ","_",df_taxa$sp [(match (tree[[2]]$tip.label,
+                                  gsub (" ","_",df_taxa$sp)))]) == tree[[2]]$tip.label)
+
+
+# change tipnames by valid names
+test_tree <- lapply (tree, function (i){
+
+  i$tip.label <- df_taxa$names_sp [(match (i$tip.label,
+                                        gsub (" ","_",df_taxa$sp)))]
+  i
+
+})
+# table(gsub ("_"," ",tree[[3]]$tip.label) == test_tree[[3]]$tip.label)
+
+
 
 # load community data
 # UVC fish data
 peixes <- read.csv(here("data","UpdatedData_RMorais_et_al_2017.csv"))
 
+# dataframe with taxa name
+df_taxa_community <-data.frame (sp = unique(peixes$ScientificName)[order(unique(peixes$ScientificName))])
+df_taxa_community$sp <- gsub ("\\.", " ", df_taxa_community$sp)
+
+# worms's validation
+worms_record_fish_community <- lapply (df_taxa_community$sp, function (i) 
+  
+  tryCatch (
+    
+    wm_records_taxamatch(i, fuzzy = TRUE, marine_only = TRUE)[[1]],
+    
+    error = function (e) print(NA)
+    
+    
+  )
+  
+)
+# naming
+names (worms_record_fish_community) <- df_taxa_community$sp
+test_taxa_comm <- lapply (worms_record_fish_community,data.frame)
+test_taxa_comm <- test_taxa_comm[unlist(lapply(test_taxa_comm,nrow))>=1]
+test_taxa_comm <- test_taxa_comm[unlist(lapply(test_taxa_comm,ncol))>1]
+test_taxa_comm<-do.call(rbind,test_taxa_comm)
+
+
+# match with the table
+df_taxa_community$sp_worms <- (test_taxa_comm[match (df_taxa_community$sp,rownames(test_taxa_comm)),
+                                              "scientificname"])
+
+table (df_taxa_community$sp_worms %in% df_taxa$sp_worms)
+
+table(df_taxa_community$sp_worms %in% traits_peixes$Name )
+table(df_taxa$sp_worms %in% traits_peixes$Name )
+
+
+# if missing, kepp the previous
+df_taxa_community$names_sp <-  ifelse (is.na(df_taxa_community$sp_worms),
+                                       df_taxa_community$sp,
+                             df_taxa_community$sp_worms)
+
+
+# match with dataset
+
+peixes$validScientificName <- df_taxa_community$names_sp [match (gsub ("\\."," ", peixes$ScientificName),
+                                  df_taxa_community$sp)]
+
+# save worms data
+save (worms_record_fish, worms_record_fish_community , 
+      file = here ("output", "tax_validation_fish.RData"))
+
+
+
+# -----------------------
+
+#  BioOracle 
+# codes to download and save in the folder "environment"
+# BiO Oracle - extracting covariate data
+# Explore datasets in the package
+# devtools::install_github("lifewatch/sdmpredictors")
+# layers <- list_layers()
+# View (layers [grep ("Bio-ORACLE",layers$dataset_code),])
+# Download specific layers to the current directory
+# set prefered folder (to download data)
+# options(sdmpredictors_datadir=here ("data","environment"))
+## chlorophil has different extent - loading and extracting in two steps         
+# layers_oracle <- load_layers(c("BO2_tempmean_ss",
+#                               "BO2_ppmean_ss", 
+#                               "BO2_salinitymean_ss", 
+#                               "BO_damean"
+#                              ))
+
+biooracle_data <-  (list.files (here ("data","environment"),pattern = ".tif"))
+biooracle_data <- lapply (biooracle_data, function (i) 
+  
+    raster (here ("data","environment",i))
+)
+biooracle_data<- stack (biooracle_data)#stack
+
+# coord to sppoints df to extract
+spdf <- SpatialPointsDataFrame(coords = coordinates_sites[,3:2], data = coordinates_sites,
+                         proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs"))
+
+## extracting data
+
+extracted_sea_data <- raster::extract (biooracle_data, 
+                                       spdf,method='bilinear', 
+                               fun=mean)
+rownames (extracted_sea_data) <- sites
+
+
+# ------------------------------
+#  distance offshore
+# BR coastline, download from here https://mapcruzin.com/free-brazil-arcgis-maps-shapefiles.htm
+
+#BR <- readOGR(dsn=here("data", "environment","brazil-coastline"), "brazil_coastline")
+BR <- st_read(("data/environment/brazil-coastline/brazil_coastline.shp"))
+#crs(BR) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0" 
+#BR <- spTransform(BR, CRS("+init=epsg:4326"))
+st_crs(BR) <- st_crs(4326) # assign crs
+
+# use dist2Line from geosphere - only works for WGS84 
+sp_data <- st_as_sf(spdf, coords = c("decimalLongitude", "decimalLatitude"))
+st_crs(sp_data) <- st_crs(4326) # assign crs
+
+# measuring the distance
+#dist_bentos <- st_distance(x = sp_data, 
+#                             y = (BR))
+# help : https://gis.stackexchange.com/questions/243994/how-to-calculate-distance-from-point-to-linestring-in-r-using-sf-library-and-g
+dist_bentos <- geosphere::dist2Line(p = st_coordinates(sp_data), 
+                     line = st_coordinates(BR)[,1:2])
+
+# binding coords
+coordinates_sites <- cbind (coordinates_sites, dist_bentos)
+
+
+# plot
+ggplot(data = world) +
+  geom_sf() +
+  geom_point(data=coordinates_sites, 
+             aes(x=decimalLongitude  , y=decimalLatitude , col =distance))# +
+  #coord_sf(xlim = c(-55, -20), ylim = c(-33,0 ), expand = FALSE)
+
+
+
+# all covariate data into a dataframe
+
+site_covs <- data.frame (sites = sites,
+                         region = site_region,
+                         sst = extracted_sea_data[,'BO2_tempmean_ss_lonlat'],
+                         turbidity = extracted_sea_data[,'BO_damean_lonlat'],
+                         productivity = extracted_sea_data[,'BO2_ppmean_ss_lonlat'],
+                         salinity = extracted_sea_data[,'BO2_salinitymean_ss_lonlat'],
+                         depth = site_depth,
+                         offshore_distance = coordinates_sites$distance,
+                         decimalLatitude = coordinates_sites$decimalLatitude,
+                         decimalLongitude = coordinates_sites$decimalLongitude)
+
+
+
+
+# ======================================================
+
+
 ## modify eventID to rm year
-peixes$eventID_MOD  <- substr(peixes$eventID, 1,nchar(as.character(peixes$eventID))-5) 
+eventID_MOD  <- paste (peixes$Region, peixes$Locality,peixes$Site, peixes$eventDepth,
+                       sep = "_")
+
+peixes$eventID_MOD <- eventID_MOD
+
 
 # number of belt transects
 length(unique(peixes$Transect_id))
@@ -26,14 +226,15 @@ length(unique(peixes$Transect_id))
 # number of localities
 length(unique(peixes$Locality))
 
-
 # obtain table 
-tab_sp_site<-cast(formula = eventID_MOD ~ ScientificName,
+tab_sp_site<-cast(formula = eventID_MOD ~ validScientificName,
      value="IndCounting",
      data=peixes,
      fun.aggregate=sum)
+
 # transforming into DF
 tab_sp_site<-(data.frame(tab_sp_site))
+
 # site names
 sites <- tab_sp_site$eventID_MOD
 
@@ -53,6 +254,11 @@ effort_site <- effort_site[match(sites,effort_site$sites),]
 traits_peixes <- read.csv(here("data","Atributos_especies_Atlantico_&_Pacifico_Oriental_2020_04_28.csv"),
                           h=T,sep=";")
 
+# SW atlatic spp
+traits_peixes <- traits_peixes[which(  traits_peixes$Province_13 == 1 | 
+                                     traits_peixes$Province_14 == 1 | 
+                                     traits_peixes$Province_47 ==1),]
+
 # adjust names to match community, trait, and phylogeny
 # trait
 traits_peixes$Name <- tolower(gsub(" ",".",traits_peixes$Name)) 
@@ -61,45 +267,50 @@ rownames(traits_peixes) <- traits_peixes$Name
 
 # calculate functional metrics
 ## subset of fish traits and communities
-tab_sp_site<- tab_sp_site[,which(colnames(tab_sp_site) %in% traits_peixes$Name)] # spp in the trait dataset
-subset_traits_peixes <- traits_peixes[which(traits_peixes$Name %in% colnames(tab_sp_site)),] # traits in the community
+tab_sp_site<- tab_sp_site[,which(tolower (colnames(tab_sp_site)) %in% traits_peixes$Name)] # spp in the trait dataset
+#subset_traits_peixes <- traits_peixes[which(traits_peixes$Name %in% colnames(tab_sp_site)),] # traits in the community
 ## interesting traits
-interesting_traits <- c("Body_size", "Trophic_level", "Depth_max","Aspect_ratio","TemPref_mean")
+interesting_traits <- c("Body_size", "Trophic_level", "Aspect_ratio","Depth_max","TemPref_mean")
 # subset
-subset_traits_peixes <- subset_traits_peixes[,interesting_traits]
+subset_traits_peixes <- traits_peixes[,interesting_traits]
 ## replacing comma by dot, and transforming into number
 subset_traits_peixes$Body_size <- as.numeric(gsub (",",".",subset_traits_peixes$Body_size))
 subset_traits_peixes$Trophic_level <- as.numeric(gsub (",",".",subset_traits_peixes$Trophic_level))
-subset_traits_peixes$Depth_max <- as.numeric(gsub (",",".",subset_traits_peixes$Depth_max))
 subset_traits_peixes$Aspect_ratio <- as.numeric(gsub (",",".",subset_traits_peixes$Aspect_ratio))
 subset_traits_peixes$TemPref_mean <- as.numeric(gsub (",",".",subset_traits_peixes$TemPref_mean))
+subset_traits_peixes$Depth_max <- as.numeric(gsub (",",".",subset_traits_peixes$Depth_max))
 
 # standardize traits
 std_traits <- apply (subset_traits_peixes, 2, scale) # scale trait values
 std_traits<-data.frame(std_traits)# dataframe (to dbFD function)
 rownames(std_traits)<- rownames(subset_traits_peixes) #lose names
 
+# imputation without phylogeny
+# proportion of missing data
+table(is.na(std_traits))[2]/sum(table(is.na(std_traits)))
+
+# imput
+require(missForest)
+std_traits <- missForest (std_traits, maxiter = 50,
+                          ntree= 100,variablewise = T)
+std_traits<-std_traits$ximp
+  
 # match spp names in trait and community dataset
-std_traits <- std_traits [match(colnames(tab_sp_site),rownames(std_traits)),]
-rownames(std_traits) == colnames(tab_sp_site)
+#std_traits <- std_traits [match(colnames(tab_sp_site),rownames(std_traits)),]
+#rownames(std_traits) == colnames(tab_sp_site)
 
 ## capture per trapping effort (number of transects per site)
 tab_sp_site <- (tab_sp_site / effort_site$effort)
 
-# adjust tip labels
-# phylogeny
-tree<-lapply (tree, function (i) {
-  
-  i$tip.label<-tolower(gsub("_",".", i$tip.label))
-  ;
-  i
-  })
+# adjust trait names
+rownames(std_traits) <- firstup (gsub ("\\.", " ",rownames(std_traits)))
+colnames(tab_sp_site)<-firstup (gsub ("\\.", " ",colnames(tab_sp_site)))
 
 # table(colnames(tab_sp_site) %in% tree$tip.label)
 # finally, match phylogeny, traits, and community
 # match phylogenetic and trait data
 
-match_data <- lapply (tree, function (i) 
+match_data <- lapply (test_tree, function (i) 
   
                   match.phylo.data(i, 
                                std_traits)
@@ -109,109 +320,202 @@ match_data <- lapply (tree, function (i)
 match_comm_data<-lapply(match_data, function (i)
   
           match.phylo.comm(i$phy,
-                           tab_sp_site )
+                           tab_sp_site)
           )
 
-# run
+# subsetting tarit data
+subset_trait_data <-lapply (seq(1,length(match_data)), function (i) 
+  
+  
+  match_data[[i]]$data[which(rownames(match_data[[i]]$data) %in% 
+                               colnames(match_comm_data[[i]]$comm)),]
 
-empirical_FD <- lapply (seq (1,length (match_data)), function (i)
+)
+# subset comm data  
+subset_comm_data <- lapply (seq(1,length(match_comm_data)), function (i) 
+  
+  match_comm_data[[i]]$comm[,which(colnames(match_comm_data[[i]]$comm) %in% rownames(subset_trait_data[[i]]))]
+  
+)
+
+# phylogenetic signal
+
+psignal <- lapply (seq(1,length(match_data)), function (k)
+  
+  lapply (seq(1,ncol (match_data[[k]]$data)), function (i)
+  
+  phylosig(match_data[[k]]$phy, 
+           match_data[[k]]$data[,i], 
+           method="K", test=TRUE, nsim=999)
+))
+
+# df with res
+psignal <- lapply (psignal, function (k) do.call (rbind, 
+         
+         lapply (k, function (i)
+           
+           data.frame (K=i$K,
+                       pval=i$P)
+         )
+))
+
+# signal K
+apply(sapply (psignal, "[[", "K"),1,mean)
+apply(sapply (psignal, "[[", "K"),1,sd)
+
+# save
+#save.image(here ( "Output","image_fish.RData"))
+
+# =======================================================
+
+load(here ( "Output","image_fish.RData"))
+
+
+# run
+empirical_FD <- lapply (seq (1,length (subset_comm_data)), function (i)
                              
-                             dbFD(x=match_data[[i]]$data,
-                                  a=match_comm_data[[i]]$comm,
+                             dbFD(x=subset_trait_data[[i]],
+                                  a=subset_comm_data[[i]],
                                    w.abun=T,
                                    stand.x=F,
                                    calc.FRic = T,
                                    stand.FRic = T,
+                                  m="max",
                                    corr = "lingoes",
                                   calc.CWM = F,
                                   calc.FDiv=F,
                                   print.pco = T)
                         )
+# save
+save (empirical_FD,
+      file= here("output", 
+                 "empirical_FD_fish.RData"))
 
 # -----------------------------------------------------------------
 # trait simulation
-## Simulate trait evolution according to a bivariate "BMM" model
+
+## Simulate trait evolution according to a bivariate "BM" model
 # Number of traits
 ntraits<-ncol(std_traits)
 # Number of simulated (pairs of) traits
 nsim<-50
+# ncores
+nc <- 5
 # sigmas
-sigma<-(rbind(c(1,0.1,0.1,0.1,0.1),
-              c(0.1,1,0.1,0.1,0.1),
-              c(0.1,0.1,1,0.1,0.1),
-              c(0.1,0.1,0.1,1,0.1),
-              c(0.1,0.1,0.1,0.1,1)))
+#sigma<- (rbind(c(1,0.25,0.25),
+#              c(0.25,1,0.25),
+#              c(0.25,0.25,1)))
+#
+# simulate parameters
+simul_param_BM <- lapply (match_data, function (i) 
 
-# ancestral states for each traits
+  
+  fitContinuous(phy=i$phy,  
+                dat = (i$data), 
+                model="BM", 
+                #SE=NA,
+                ncores = nc)
+  
+  
+)
+
+# ancestral states for each trait
 theta<-rep(0,ntraits)
 
 # Simulate
 
-simul<-lapply (match_data, function (i) 
+simul<-lapply (seq(1,length(match_data)), function (i) 
   
-        mvSIM(i$phy,
-             nsim=nsim, 
-             model="BM1",
-             param=list(sigma=sigma, 
-                        theta=theta,
-                        ntraits=5,
-                        names_traits=c("Trait 1",
-                                       "Trait 2",
-                                       "Trait 3",
-                                       "Trait 4",
-                                       "Trait 5"))))
-
-
-# reduce (per phylogeny) to have the average of multivariate traits
-mean_simul <- lapply (simul, function (i)
-  
-            Reduce("+",i)/length(i))
-
-
-# simulated FD
-# run across simulations
-simulated_FD <- lapply (seq (1,length (match_data)), function (i)
-  
-                dbFD(x=mean_simul[[i]],
-                     a=match_comm_data[[i]]$comm,
-                     w.abun=T,
-                     stand.x=F,
-                     calc.FRic = T,
-                     stand.FRic = T,
-                     corr = "lingoes",
-                     calc.CWM = F,
-                     calc.FDiv=F,
-                     print.pco = T)
-  
-)
-
-# ----------------------------------------------
-# niche filling (early burst)
-
-# sigmas
-betas<-(rbind(c(-0.5,0.1,0.1,0.1,0.1),
-              c(0.1,-0.5,0.1,0.1,0.1),
-              c(0.1,0.1,-0.5,0.1,0.1),
-              c(0.1,0.1,0.-0.5,1,0.1),
-              c(0.1,0.1,0.1,0.1,-0.5)))
-
-# Simulate Eb
-
-simul_EB<-lapply (match_data, function (i) 
-  
-  mvSIM(i$phy,
+  mvSIM(match_data[[i]]$phy,
         nsim=nsim, 
-        model="EB",
-        param=list(sigma=sigma, 
-                   beta=betas,
+        model="BM1",
+        param=list(sigma=diag (c(simul_param_BM[[i]]$Body_size$opt$sigsq,
+                                 simul_param_BM[[i]]$Trophic_level$opt$sigsq,
+                                 simul_param_BM[[i]]$Aspect_ratio$opt$sigsq,
+                                 simul_param_BM[[i]]$Depth_max$opt$sigsq,
+                                 simul_param_BM[[i]]$TemPref_mean$opt$sigsq)),
                    theta=theta,
-                   ntraits=5,
+                   ntraits=ntraits,
                    names_traits=c("Trait 1",
                                   "Trait 2",
                                   "Trait 3",
                                   "Trait 4",
                                   "Trait 5"))))
 
+
+# reduce (per phylogeny) to have the average of multivariate traits
+mean_simul <- lapply (simul, function (i)
+  
+  Reduce("+",i)/length(i))
+
+
+# simulated FD
+# run across simulations
+simulated_FD <- lapply (seq (1,length (subset_comm_data)), function (i)
+  
+  dbFD(x=mean_simul[[i]][which(rownames(mean_simul[[i]]) %in% colnames(subset_comm_data[[i]])),],
+       a=subset_comm_data[[i]],
+       w.abun=T,
+       stand.x=F,
+       calc.FRic = T,
+       m="max",
+       stand.FRic = T,
+       corr = "lingoes",
+       calc.CWM = F,
+       calc.FDiv=F,
+       print.pco = T)
+  
+)
+
+# save
+save (simul_param_BM,
+      simulated_FD,
+      file= here("output", 
+                 "simulated_FD_BM_fish.RData"))
+
+# ----------------------------------------------
+# niche filling (early burst)
+# estimating parameters
+# simulate parameters
+simul_param_EB <- lapply (match_data, function (i) 
+  
+  fitContinuous(phy=i$phy,  
+                dat = (i$data), 
+                model="EB", 
+                #SE=NA,
+                ncores = nc)
+  
+  )
+
+# ancestral states for each trait
+theta<-rep(0,ntraits)
+
+#run trait simulation
+simul_EB<-lapply (seq(1,length(match_data)), function (i) 
+  
+  tryCatch(
+    mvSIM(match_data[[i]]$phy,
+          nsim=nsim, 
+          model="EB",
+          param=list(sigma=diag (c(simul_param_EB[[i]]$Body_size$opt$sigsq,
+                                   simul_param_EB[[i]]$Trophic_level$opt$sigsq,
+                                   simul_param_EB[[i]]$Aspect_ratio$opt$sigsq,
+                                   simul_param_EB[[i]]$Depth_max$opt$sigsq,
+                                   simul_param_EB[[i]]$TemPref_mean$opt$sigsq)), 
+                     beta=diag (c(simul_param_EB[[i]]$Body_size$opt$a,
+                                  simul_param_EB[[i]]$Trophic_level$opt$a,
+                                  simul_param_EB[[i]]$Aspect_ratio$opt$a,
+                                  simul_param_EB[[i]]$Depth_max$opt$a,
+                                  simul_param_EB[[i]]$TemPref_mean$opt$a)),
+                     theta=theta,
+                     ntraits=ntraits)),
+  error = function(e) return ("NULL"))
+  
+  )
+
+# rm error
+#correct<-which(unlist(lapply (simul_EB,length)) == 50) # all successful simulations
+#simul_EB <- (simul_EB[correct]) # remove
 
 # reduce (per phylogeny) to have the average of multivariate traits
 mean_simul_EB <- lapply (simul_EB, function (i)
@@ -219,210 +523,165 @@ mean_simul_EB <- lapply (simul_EB, function (i)
   Reduce("+",i)/length(i))
 
 
-
 # simulated FD
 # run across simulations
-simulated_FD_EB <- lapply (seq (1,length (match_data)), function (i)
+#match_comm_data_sub <- match_comm_data [correct] # rm errors
+
+simulated_FD_EB <- lapply (seq (1,length (subset_comm_data)), function (i)
   
-  dbFD(x=mean_simul_EB[[i]],
-       a=match_comm_data[[i]]$comm,
+  dbFD(x=mean_simul_EB[[i]][which(rownames(mean_simul_EB[[i]]) %in% colnames(subset_comm_data[[i]])),],
+       a=subset_comm_data[[i]],
        w.abun=T,
        stand.x=F,
        calc.FRic = T,
        stand.FRic = T,
        corr = "lingoes",
+       m="max",
        calc.CWM = F,
        calc.FDiv=F,
        print.pco = T)
   
 )
+# save
+save (simul_param_EB,
+      simulated_FD_EB,
+      file= here("output", 
+                 "simulated_FD_EB_fish.RData"))
 
+# ------------------------------
 # OU
-
-
-# Simulate Eb
-alpha <- (rbind(c(1,0.1,0.1,0.1,0.1),
-                c(0.1,1,0.1,0.1,0.1),
-                c(0.1,0.1,1,0.1,0.1),
-                c(0.1,0.1,0.1,1,0.1),
-                c(0.1,0.1,0.1,0.1,1)))
-
-simul_OU<-lapply (match_data, function (i) 
+# estimating parameters
+simul_param_OU <- lapply (match_data, function (i) 
   
-  mvSIM(i$phy,
-        nsim=nsim, 
-        model="OU1",
-        param=list(sigma=sigma, 
-                   beta=betas,
-                   theta=theta,
-                   alpha=alpha,
-                   ntraits=5,
-                   names_traits=c("Trait 1",
-                                  "Trait 2",
-                                  "Trait 3",
-                                  "Trait 4",
-                                  "Trait 5"))))
+  fitContinuous(phy=i$phy,  
+                dat = (i$data), 
+                model="OU", 
+                SE=NA)
+  
+  )
+# ancestral states for each trait
+theta<-rep(0,ntraits)
 
+#run trait simulation
+simul_OU<-lapply (seq(1,length(match_data)), function (i) 
+  
+  tryCatch(
+    mvSIM(match_data[[i]]$phy,
+          nsim=nsim, 
+          model="OU1",
+          param=list(sigma=diag (c(simul_param_OU[[i]]$Body_size$opt$sigsq,
+                                   simul_param_OU[[i]]$Trophic_level$opt$sigsq,
+                                   simul_param_OU[[i]]$Aspect_ratio$opt$sigsq,
+                                   simul_param_OU[[i]]$Depth_max$opt$sigsq,
+                                   simul_param_OU[[i]]$TemPref_mean$opt$sigsq)), 
+                     alpha = diag (c(simul_param_OU[[i]]$Body_size$opt$alpha,
+                                     simul_param_OU[[i]]$Trophic_level$opt$alpha,
+                                     simul_param_OU[[i]]$Aspect_ratio$opt$alpha,
+                                     simul_param_OU[[i]]$Depth_max$opt$alpha,
+                                     simul_param_OU[[i]]$TemPref_mean$opt$alpha)),
+                     theta=theta,
+                     ntraits=ntraits,
+                     names_traits=c("Trait 1",
+                                    "Trait 2",
+                                    "Trait 3",
+                                    "Trait 4",
+                                    "Trait 5"))),
+    error = function(e) return ("NULL"))
+  
+)
+
+# rm error
+#correctOU<-which(unlist(lapply (simul_OU,length)) == 50) # all successful simulations
+#simul_OU <- (simul_OU[correctOU]) # remove
 
 # reduce (per phylogeny) to have the average of multivariate traits
 mean_simul_OU <- lapply (simul_OU, function (i)
   
   Reduce("+",i)/length(i))
 
-
-
 # simulated FD
 # run across simulations
-simulated_FD_OU <- lapply (seq (1,length (match_data)), function (i)
+simulated_FD_OU <- lapply (seq (1,length (subset_comm_data)), function (i)
   
-  dbFD(x=mean_simul_OU[[i]],
-       a=match_comm_data[[i]]$comm,
+  tryCatch(
+  dbFD(x=mean_simul_OU[[i]][which(rownames(mean_simul_OU[[i]]) %in% colnames(subset_comm_data[[i]])),],
+       a=subset_comm_data[[i]],
        w.abun=T,
        stand.x=F,
        calc.FRic = T,
        stand.FRic = T,
        corr = "lingoes",
+       m="max",
        calc.CWM = F,
        calc.FDiv=F,
-       print.pco = T)
+       print.pco = T),
+  error = function(e) return ("NULL"))
   
 )
 
-save.image("image_fish.RData")
+# save
+save (simul_param_OU,
+      simulated_FD_OU,
+      file= here("output", "simulated_FD_OU_fish.RData"))
+
+
+# -----------------------------------
+# simulate multiple optimum OU to compare with a single optimum OU
+
+## make analysis input data.frame
+regime <- match_data[[1]]$data$Body_size
+regime <- cut(regime, breaks = c(-1,-0.5, 0.5,6))
+
+
+data<-data.frame(Genus_species=rownames(match_data[[1]]$data),
+                 Reg=as.factor (regime),
+                 Body_size = match_data[[1]]$data$Body_size)
+
+
+
+require("OUwie")
+fitOU<-OUwie(match_data[[1]]$phy,
+             data,
+             model="OUM",
+             simmap.tree = F,
+             algorithm="invert")
+
+
+
+data(tworegime)
+
+#Plot the tree and the internal nodes to highlight the selective regimes:
+select.reg<-character(length(tree$node.label))
+select.reg[tree$node.label == 1] <- "black"
+select.reg[tree$node.label == 2] <- "red"
+plot(tree)
+nodelabels(pch=21, bg=select.reg)
+
+
+
+## Not run: 
+#To see the first 5 lines of the data matrix to see what how to
+#structure the data:
+trait[1:5,]
+
+#Now fit an OU model that allows different sigma^2:
+OUwie(tree,trait,model=c("OUMV"))
+
+
+# ------------------------------
+# OU
+# estimating parameters
+simul_param_MOU <- lapply (match_data, function (i) 
+  
+  fitContinuous(phy=i$phy,  
+                dat = (i$data), 
+                model="OUM", 
+                SE=NA)
+  
+  )
+# ancestral states for each trait
+theta<-rep(0,ntraits)
+
 
 # -----------------------------------------------------
-# empirical results
-empirical_results <- data.frame (SR= apply(sapply(empirical_FD,"[[","nbsp"),1,mean),
-                                 FRic= apply(sapply(empirical_FD,"[[","FRic"),1,mean),
-                                 FEve=apply(sapply(empirical_FD,"[[","FEve"),1,mean),
-                                 Dataset= "Empirical")
-
-# average of simulated values (brownian motion)
-simulated_results_BM <- data.frame (SR= apply(sapply(simulated_FD,"[[","nbsp"),1,mean),
-                                 FRic= apply(sapply(simulated_FD,"[[","FRic"),1,mean),
-                                 FEve=apply(sapply(simulated_FD,"[[","FEve"),1,mean),
-                                 Dataset= "SimulatedBM")
-
-# average of simulated values by EB
-simulated_results_EB <- data.frame (SR= apply(sapply(simulated_FD_EB,"[[","nbsp"),1,mean),
-                                    FRic= apply(sapply(simulated_FD_EB,"[[","FRic"),1,mean),
-                                    FEve=apply(sapply(simulated_FD_EB,"[[","FEve"),1,mean),
-                                    Dataset = "SimulatedEB")
-# average of simulated values by OU
-simulated_results_OU <- data.frame (SR= apply(sapply(simulated_FD_OU,"[[","nbsp"),1,mean),
-                                    FRic= apply(sapply(simulated_FD_OU,"[[","FRic"),1,mean),
-                                    FEve=apply(sapply(simulated_FD_OU,"[[","FEve"),1,mean),
-                                    Dataset = "SimulatedOU")
-
-# bind them
-df_analyzes <- rbind(empirical_results,
-                     simulated_results_BM,
-                     simulated_results_EB,
-                     simulated_results_OU)
-
-##---------------------------------------------------------
-# analyses
-# MCMC settings
-nc<-3
-ni<-10000
-nb<-5000
-nt<-10
-
-# run model (ancova)
-model.ancova.FRic <- brm (FRic ~ poly(SR,2)*Dataset,
-                     data=df_analyzes,
-                     family = gaussian (link="identity"),
-                     chains=nc,
-                     iter = ni,
-                     warmup = nb,
-                     thin=nt)
-
-# summary of results
-summary (model.ancova.FRic)
-tab_model(model.ancova.FRic)
-
-# plotting
-p1<-plot(conditional_effects(model.ancova.FRic,
-                             method="fitted",
-                             re_formula=NA,
-                             robust=T,
-                             effects = "SR:Dataset",
-                             points=T,
-                             prob = 0.95),
-         
-         theme = theme_classic() +
-
-	 theme (axis.title = element_text(size=15),
-                  axis.text = element_text(size=12),
-                  legend.position = "top") ,
-         points=T) [[1]] + 
-  
-  
-  scale_color_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
-  scale_fill_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
-
-
-  xlab("Species richness gradient") + 
-  
-  ylab ("Functional Richness (FRic)")
-
-
-# compare slopes
-
-m.lst.FRic <- emtrends (model.ancova.FRic, "Dataset", var="SR")
-# m.lst_tab.FRic <- summary(m.lst.FRic,point.est = mean)
-
-# run model (ancova)
-model.ancova.FEve <- brm (FEve ~ poly(SR,2)*Dataset,
-                          data=df_analyzes,
-                          family = gaussian (link="identity"),
-                          chains=nc,
-                          iter = ni,
-                          warmup = nb,
-                          thin=nt)
-
-# summary of results
-summary (model.ancova.FEve)
-tab_model(model.ancova.FEve)
-
-# plotting
-p2<-plot(conditional_effects(model.ancova.FEve,
-                             method="fitted",
-                             re_formula=NA,
-                             robust=T,
-                             effects = "SR:Dataset",
-                             points=T,
-                             prob = 0.95),
-         
-         theme = theme_classic() +
-           
-           theme (axis.title = element_text(size=15),
-                  axis.text = element_text(size=12),
-                  legend.position = "top") ,
-         points=T) [[1]] + 
-  
-  scale_color_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
-  scale_fill_manual(values=c("#000000","#0F00FF","#D98C00","#A4EBF3")) + 
-
-  xlab("Species richness gradient") + 
-  
-  ylab ("Functional Evenness (FEve)")
-
-# organize plots
-pdf(here("Output","Fig3_fish.pdf"), width=9,height=5)
-grid.arrange(p1,p2,nrow=1)
-dev.off()
-
-# compare slopes
-m.lst.FEve <- emtrends (model.ancova.FEve, "Dataset", var="SR")
-# m.lst_tab.FEve <- summary(m.lst.FEve,point.est = mean)
-
-# save results
-save (model.ancova.FRic,
-	m.lst.FRic,
-	m.lst_tab.FRic,
-	model.ancova.FEve,
-	m.lst.FEve,
-	m.lst_tab.FEve,
-      file=here("Output", "GLM_test.RData"))
-
+# end
