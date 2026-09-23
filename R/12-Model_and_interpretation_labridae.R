@@ -28,7 +28,6 @@ load (here("Output", "simulated_FD_BM_labridae.RData"))
 load (here("Output", "simulated_FD_EB_labridae.RData"))
 load (here("Output", "simulated_FD_OU_labridae.RData"))
 load (here("Output", "empirical_FD_labridae.RData"))
-#load (here("Output", "simulated_FD_random_labridae.RData"))
 
 # load R data
 load(here ( "Processed_data","image_labridae.RData"))
@@ -116,12 +115,6 @@ empirical_results <- data.frame (SR= apply(sapply(empirical_FD,"[[","nbsp"),1,me
                                  FEve=apply(sapply(empirical_FD,"[[","FEve"),1,mean),
                                  Dataset= "Empirical")
 
-# random traits
-#simulated_results_random <- data.frame (SR= apply(sapply(simulated_FD_random,"[[","nbsp"),1,mean),
-#                                    FRic= apply(sapply(simulated_FD_random,"[[","FRic"),1,mean),
-#                                    FEve=apply(sapply(simulated_FD_random,"[[","FEve"),1,mean),
-#                                    Dataset= "SimulatedRandom")
-
 # average of simulated values (brownian motion)
 simulated_results_BM <- data.frame (SR= apply(sapply(simulated_FD,"[[","nbsp"),1,mean),
                                     FRic= apply(sapply(simulated_FD,"[[","FRic"),1,mean),
@@ -142,7 +135,6 @@ simulated_results_OU <- data.frame (SR= apply(sapply(simulated_FD_OU,"[[","nbsp"
 
 # bind them
 df_analyzes <- rbind(empirical_results,
-                     #simulated_results_random,
                      simulated_results_BM,
                      simulated_results_EB,
                      simulated_results_OU)

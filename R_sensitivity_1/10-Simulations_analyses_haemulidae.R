@@ -94,47 +94,6 @@ save (empirical_FD,
                  "empirical_FD_haemulidae.RData"))
 
 
-# -------------------------------------
-
-# Random traits
-
-r_traits_sim <- lapply (seq(1,length(match_data)), function (i) {
-  
-  # matrix traits
-  r_traits <- match_data[[i]]$data
-  matrix_traits  <- apply (r_traits,2, function (x) {
-  
-            rnorm(nrow(r_traits),0,1)
-  
-  })
-  dimnames(matrix_traits) <- dimnames(r_traits)
-  matrix_traits
-  
-  }
-)
-
-# simulated FD
-# run across simulations
-simulated_FD_random <- lapply (seq (1,length (match_comm_data)), function (i)
-  
-                dbFD(x=r_traits_sim[[i]][which(rownames(r_traits_sim[[i]]) %in% colnames(subset_comm_data[[i]])),],
-                     a=subset_comm_data[[i]][which(rowSums(subset_comm_data[[i]]) >0),],
-                     w.abun=T,
-                     stand.x=F,
-                     calc.FRic = T,
-                     stand.FRic = T,
-                     m = "max",
-                     corr = "lingoes",
-                     calc.CWM = F,
-                     calc.FDiv=F,
-                     print.pco = T)
-  
-)
-
-# save
-save (simulated_FD_random,
-      file= here("Output_sensitivity_1", "simulated_FD_random_haemulidae.RData"))
-
 # -----------------------------------------------------------------
 # trait simulation
 

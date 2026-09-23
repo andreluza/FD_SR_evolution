@@ -62,7 +62,6 @@ test_tree <- lapply (test_tree, function (i){
   i
 
 })
-# table(gsub ("_"," ",tree[[3]]$tip.label) == test_tree[[3]]$tip.label)
 
 # -------------------------------------------------
 

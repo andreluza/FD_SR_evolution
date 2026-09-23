@@ -1,5 +1,3 @@
-#test <- read.csv("https://raw.githubusercontent.com/andreluza/FD_SR_evolution/main/data/Atributos_especies_Atlantico_%26_Pacifico_Oriental_2020_04_28.csv",
-#                 sep=";")
 
 # -------------------------------------------------------
 

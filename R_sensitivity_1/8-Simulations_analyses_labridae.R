@@ -115,27 +115,6 @@ r_traits_sim <- lapply (seq(1,length(match_data)), function (i) {
   }
 )
 
-# simulated FD
-# run across simulations
-simulated_FD_random <- lapply (seq (1,length (match_comm_data)), function (i)
-  
-                dbFD(x=r_traits_sim[[i]][which(rownames(r_traits_sim[[i]]) %in% colnames(subset_comm_data[[i]])),],
-                     a=subset_comm_data[[i]][which(rowSums(subset_comm_data[[i]]) >0),],
-                     w.abun=T,
-                     stand.x=F,
-                     calc.FRic = T,
-                     stand.FRic = T,
-                     m = "max",
-                     corr = "lingoes",
-                     calc.CWM = F,
-                     calc.FDiv=F,
-                     print.pco = T)
-  
-)
-
-# save
-save (simulated_FD_random,
-      file= here("Output_sensitivity_1", "simulated_FD_random_labridae.RData"))
 
 # -----------------------------------------------------------------
 # trait simulation
@@ -359,10 +338,6 @@ simul_OU<-lapply (seq(1,length(match_data)), function (i)
     error = function(e) return ("NULL"))
   
 )
-
-# rm error
-#correctOU<-which(unlist(lapply (simul_OU,length)) == 50) # all successful simulations
-#simul_OU <- (simul_OU[correctOU]) # remove
 
 # reduce (per phylogeny) to have the average of multivariate traits
 mean_simul_OU <- lapply (simul_OU, function (i)

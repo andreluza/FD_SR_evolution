@@ -14,7 +14,6 @@ load (here("Output_sensitivity_1", "simulated_FD_BM_rodents.RData"))
 load (here("Output_sensitivity_1", "simulated_FD_EB_rodents.RData"))
 load (here("Output_sensitivity_1", "simulated_FD_OU_rodents.RData"))
 load (here("Output_sensitivity_1", "empirical_FD_rodents.RData"))
-#load (here("Output", "simulated_FD_random_rodents.RData"))
 
 # load R data
 load(here ( "Processed_data_sensitivity","image_rodents.RData"))

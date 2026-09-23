@@ -209,10 +209,6 @@ std_traits <- missForest (std_traits, maxiter = 50,
                           ntree= 100,variablewise = T)
 std_traits<-std_traits$ximp
   
-# match spp names in trait and community dataset
-#std_traits <- std_traits [match(colnames(tab_sp_site),rownames(std_traits)),]
-#rownames(std_traits) == colnames(tab_sp_site)
-
 ## capture per trapping effort (number of transects per site)
 tab_sp_site <- (tab_sp_site / effort_site$effort)
 
@@ -220,10 +216,7 @@ tab_sp_site <- (tab_sp_site / effort_site$effort)
 rownames(std_traits) <- firstup (gsub ("\\.", " ",rownames(std_traits)))
 colnames(tab_sp_site)<-firstup (gsub ("\\.", " ",colnames(tab_sp_site)))
 
-# table(colnames(tab_sp_site) %in% tree$tip.label)
-# finally, match phylogeny, traits, and community
 # match phylogenetic and trait data
-
 match_data <- lapply (test_tree, function (i) 
   
                   match.phylo.data(i, 
