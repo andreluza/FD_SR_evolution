@@ -8,6 +8,9 @@ simulations
 <!-- badges: start -->
 <!-- badges: end -->
 
+Repository DOI:
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22924448.svg)](https://doi.org/10.5281/zenodo.22924448)
+
 #### Organization of the repository: 
 
 *Root*  
